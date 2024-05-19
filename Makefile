@@ -27,7 +27,7 @@ install:          ## Install the project in dev mode.
 .PHONY: fmt
 fmt:              ## Format/lint code using ruff format and ruff check
 	$(ENV_PREFIX)ruff format
-	$(ENV_PREFIX)ruff check --fix
+	$(ENV_PREFIX)ruff check --fix --unsafe-fixes
 
 .PHONY: lint
 lint:             ## Run ruff check and pyright
