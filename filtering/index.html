@@ -3,22 +3,22 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="None" />
-      <link rel="shortcut icon" href="img/favicon.ico" />
-    <title>TOD attack miner</title>
-    <link rel="stylesheet" href="css/theme.css" />
-    <link rel="stylesheet" href="css/theme_extra.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Filtering - TOD attack miner</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
-        var mkdocs_page_name = "Introduction";
-        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_name = "Filtering";
+        var mkdocs_page_input_path = "filtering.md";
         var mkdocs_page_url = null;
       </script>
     
     <!--[if lt IE 9]>
-      <script src="js/html5shiv.min.js"></script>
+      <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
       <script>hljs.highlightAll();</script> 
@@ -30,19 +30,17 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href="." class="icon icon-home"> TOD attack miner
+          <a href=".." class="icon icon-home"> TOD attack miner
         </a><div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <ul class="current">
-                <li class="toctree-l1 current"><a class="reference internal current" href="#">Introduction</a>
-    <ul class="current">
-    </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Introduction</a>
                 </li>
               </ul>
       </div>
@@ -52,14 +50,14 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href=".">TOD attack miner</a>
+          <a href="..">TOD attack miner</a>
         
       </nav>
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
-      <li class="breadcrumb-item active">Introduction</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Filtering</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -68,8 +66,27 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="tod-attack-miner">TOD attack miner</h1>
-<p>TODO...</p>
+                <h1 id="filtering">Filtering</h1>
+<p>We filter the potential transaction pairs with following goals:</p>
+<ol>
+<li>Remove potential attacks, that do not make sense (eg self-attacks)</li>
+<li>Remove duplicated attacks, where the analysis outcome would (likely) be the same</li>
+</ol>
+<h2 id="non-attack-filtering">Non-attack filtering</h2>
+<h3 id="self-attack">Self-attack</h3>
+<p>If both transactions are sent by the same actor (A_from == B_from).</p>
+<h3 id="ether-transfer">Ether-transfer</h3>
+<p>If the 2nd transaction is only an Ether transfer (B_call_stack has length 0 or smth like that).</p>
+<p>We allow, that the first transaction is just an Ether transfer, as it could influence the second transaction if it accesses this balance (directly/indirectly).</p>
+<h3 id="_1">...</h3>
+<h2 id="deduplication">Deduplication</h2>
+<p>Some ideas:</p>
+<ul>
+<li>only trace some attacks per contract</li>
+<li>only trace some attacks per contract skeleton</li>
+<li>only trace some attacks per function skeleton (if that exists)</li>
+<li>only trace some attacks per function call</li>
+</ul>
               
             </div>
           </div><footer>
@@ -97,11 +114,11 @@
     
   </span>
 </div>
-    <script src="js/jquery-3.6.0.min.js"></script>
-    <script>var base_url = ".";</script>
-    <script src="js/theme_extra.js"></script>
-    <script src="js/theme.js"></script>
-      <script src="search/main.js"></script>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
     <script>
         jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
@@ -110,8 +127,3 @@
 
 </body>
 </html>
-
-<!--
-MkDocs version : 1.6.0
-Build Date UTC : 2024-05-21 19:38:22.369528+00:00
--->
