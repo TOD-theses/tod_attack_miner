@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock
-from tod_attack_miner.analysis.analyzer import get_collisions
 from tod_attack_miner.db.db import DB
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
@@ -20,15 +19,18 @@ def run_collisions_test(
     rpc.fetch_block_with_transactions.return_value = blocks[0]
     rpc.fetch_prestates.return_value = prestates
 
-    db = DB()
+    db = DB("test_database.db")
     fetch_block_range(rpc, db, block_range)
-    collision_transactions = get_collisions(db)
+    collision_transactions = db.get_storage_collisions_tx_pairs()
 
     expected_collisions_set = set(
         frozenset(collision) for collision in expected_collisions
     )
+    collision_transactions_set = set(
+        frozenset(collision) for collision in collision_transactions
+    )
 
-    assert collision_transactions == expected_collisions_set
+    assert collision_transactions_set == expected_collisions_set
 
 
 def test_demo():

@@ -1,9 +1,6 @@
 site_name: TOD attack miner
 theme: readthedocs
 
-nav:
-- Introduction: 'index.md'
-
 markdown_extensions:
 - admonition
 - plantuml_markdown:
