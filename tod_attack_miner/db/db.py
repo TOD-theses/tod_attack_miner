@@ -1,5 +1,6 @@
+from pathlib import Path
 import sqlite3
-from typing import Any
+from typing import Any, Sequence
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
 
 _TABLES = {
@@ -9,7 +10,7 @@ _TABLES = {
 
 
 class DB:
-    def __init__(self, database_path: str) -> None:
+    def __init__(self, database_path: Path) -> None:
         self._con = sqlite3.connect(database_path)
         self._setup_tables()
         self._prestate_traces: list[tuple[int, TxPrestate]] = []
@@ -49,7 +50,7 @@ class DB:
         print("selected prestates", results)
         return results
 
-    def get_storage_collisions_tx_pairs(self) -> Any:
+    def get_storage_collisions_tx_pairs(self) -> Sequence[tuple[str, str]]:
         cursor = self._con.cursor()
         sql = """
 SELECT a.tx_hash, b.tx_hash

@@ -1,11 +1,10 @@
 """CLI interface for tod_attack_miner project."""
 
 from argparse import ArgumentParser
+from pathlib import Path
 from typing import Any
 
-from tod_attack_miner.db.db import DB
-from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
-from tod_attack_miner.rpc.rpc import RPC
+from tod_attack_miner.miner.miner import Miner
 import matplotlib.pyplot as plt
 
 
@@ -14,16 +13,15 @@ def main():
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
     parser.add_argument("--from-block", default=19895498)
     parser.add_argument("--to-block", default=19895498 + 100 - 1)
-    parser.add_argument("--database-path", default="tod_attacks.db")
+    parser.add_argument("--database-path", type=Path, default="tod_attacks.db")
     args = parser.parse_args()
 
-    block_range = BlockRange(args.from_block, args.to_block)
-    rpc = RPC(args.archive_node_provider)
-    db = DB(args.database_path)
+    miner = Miner(args.archive_node_provider, args.database_path)
 
     if False:
-        fetch_block_range(rpc, db, block_range)
+        miner.fetch(args.from_block, args.to_block)
 
+    db = miner.db
     print(f"Stored transactions: {db.count_prestates()}")
     storage_collisions = db.get_storage_collisions_tx_pairs()
     print(f"Tx pairs with storage collisions: {len(storage_collisions)}")

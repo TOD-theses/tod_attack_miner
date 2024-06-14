@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock
 from tod_attack_miner.db.db import DB
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
@@ -19,7 +20,7 @@ def run_collisions_test(
     rpc.fetch_block_with_transactions.return_value = blocks[0]
     rpc.fetch_prestates.return_value = prestates
 
-    db = DB("test_database.db")
+    db = DB(Path("test_database.db"))
     fetch_block_range(rpc, db, block_range)
     collision_transactions = db.get_storage_collisions_tx_pairs()
 
