@@ -31,5 +31,5 @@ def fetch_block_range(rpc: RPC, db: DB, block_range: BlockRange):
         prestates = rpc.fetch_prestates(block_number)
 
         db.insert_block(rpc.fetch_block_with_transactions(block_number))
-        for prestate in prestates:
-            db.insert_prestate(block_number, prestate)
+        for i, prestate in enumerate(prestates):
+            db.insert_prestate(block_number, i, prestate)

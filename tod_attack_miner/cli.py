@@ -18,14 +18,13 @@ def main():
 
     miner = Miner(args.archive_node_provider, args.database_path)
 
-    if False:
-        miner.fetch(args.from_block, args.to_block)
+    miner.fetch(int(args.from_block), int(args.to_block))
 
     db = miner.db
     print(f"Stored transactions: {db.count_prestates()}")
     storage_collisions = db.get_storage_collisions_tx_pairs()
     print(f"Tx pairs with storage collisions: {len(storage_collisions)}")
-    print(storage_collisions[:10])
+    print("first 10 collisions: ", storage_collisions[:10])
     unique_transaction_hashes = set(collision[0] for collision in storage_collisions)
     print(
         f"Unique transactions with storage collisions: {len(unique_transaction_hashes)}"

@@ -5,7 +5,7 @@ from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
 
 _TABLES = {
     "prestates": "(hash TEXT PRIMARY KEY) STRICT",
-    "storage_prestates": "(tx_hash TEXT, block_number INTEGER, addr TEXT, key TEXT, value TEXT) STRICT",
+    "storage_prestates": "(tx_hash TEXT, block_number INTEGER, tx_index INTEGER, addr TEXT, key TEXT, value TEXT) STRICT",
 }
 
 
@@ -22,7 +22,7 @@ class DB:
             for name, definition in _TABLES.items():
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {name} {definition}")
 
-    def insert_prestate(self, block_number: int, prestate: TxPrestate):
+    def insert_prestate(self, block_number: int, tx_index: int, prestate: TxPrestate):
         self._prestate_traces.append((block_number, prestate))
         with self._con:
             cursor = self._con.cursor()
@@ -30,9 +30,17 @@ class DB:
 
             for addr in prestate["result"]:
                 for key, val in prestate["result"][addr].get("storage", {}).items():
-                    values = (prestate["txHash"], block_number, addr, key, val)
+                    values = (
+                        prestate["txHash"],
+                        block_number,
+                        tx_index,
+                        addr,
+                        key,
+                        val,
+                    )
                     cursor.execute(
-                        "INSERT INTO storage_prestates VALUES (?, ?, ?, ?, ?)", values
+                        "INSERT INTO storage_prestates VALUES (?, ?, ?, ?, ?, ?)",
+                        values,
                     )
 
     def insert_block(self, block: BlockWithTransactions):
@@ -43,13 +51,6 @@ class DB:
         cursor.execute("SELECT count(*) FROM prestates")
         return cursor.fetchone()
 
-    def get_all_prestates(self) -> list[tuple[int, TxPrestate]]:
-        cursor = self._con.cursor()
-        cursor.execute("SELECT * FROM prestates")
-        results = cursor.fetchall()
-        print("selected prestates", results)
-        return results
-
     def get_storage_collisions_tx_pairs(self) -> Sequence[tuple[str, str]]:
         cursor = self._con.cursor()
         sql = """
@@ -59,7 +60,7 @@ INNER JOIN storage_prestates b
 ON a.addr = b.addr
 	AND a.key = b.key
     AND a.value != b.value
-    AND a.tx_hash <= b.tx_hash /* TODO: use tx index and block instead of tx_hash */
+    AND a.tx_index < b.tx_index
     AND abs(b.block_number - a.block_number) <= 0
     GROUP BY a.tx_hash, b.tx_hash
 """
