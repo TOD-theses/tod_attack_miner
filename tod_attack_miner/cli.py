@@ -1,6 +1,7 @@
 """CLI interface for tod_attack_miner project."""
 
 from argparse import ArgumentParser
+from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,9 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = ArgumentParser(description="Mine TOD transactions in Ethereum")
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + version("tod_attack_miner")
+    )
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
     parser.add_argument("--from-block", default=19895498)
     parser.add_argument("--to-block", default=19895498 + 100 - 1)
@@ -23,6 +27,9 @@ def main():
     db = miner.db
     print(f"Stored transactions: {db.count_prestates()}")
     storage_collisions = db.get_storage_collisions_tx_pairs()
+    # TODO: filter tx pairs (eg add a "same-from-to" label)
+    # we could also link each collision regardless of distance
+    # and then add block-distance as a label, could be useful for stats
     print(f"Tx pairs with storage collisions: {len(storage_collisions)}")
     print("first 10 collisions: ", storage_collisions[:10])
     unique_transaction_hashes = set(collision[0] for collision in storage_collisions)
