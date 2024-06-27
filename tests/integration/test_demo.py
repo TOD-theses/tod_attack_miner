@@ -9,7 +9,7 @@ from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
 def run_collisions_test(
     prestates: list[TxPrestate],
     blocks: list[BlockWithTransactions],
-    expected_collisions: list[set[str]],
+    expected_collisions: list[set[str | frozenset]],
 ):
     block_range = BlockRange(
         min(b["number"] for b in blocks), max(b["number"] for b in blocks)
@@ -22,7 +22,7 @@ def run_collisions_test(
 
     db = DB(Path("test_database.db"))
     fetch_block_range(rpc, db, block_range)
-    collision_transactions = db.get_storage_collisions_tx_pairs()
+    collision_transactions = db.get_storage_collision_tx_pairs()
 
     expected_collisions_set = set(
         frozenset(collision) for collision in expected_collisions
@@ -91,9 +91,9 @@ def test_demo():
         }
     ]  # type: ignore
 
-    expected_collisions: list[set[str]] = [
-        {"0x1111", "0x2222"},
-        {"0x1111", "0x4444"},
+    expected_collisions: list[set[str | frozenset]] = [
+        {"0x1111", "0x2222", frozenset({"storage"})},
+        {"0x1111", "0x4444", frozenset({"storage"})},
     ]
 
     run_collisions_test(prestates, blocks, expected_collisions)

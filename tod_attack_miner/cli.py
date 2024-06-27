@@ -26,7 +26,7 @@ def main():
 
     db = miner.db
     print(f"Stored transactions: {db.count_prestates()}")
-    storage_collisions = db.get_storage_collisions_tx_pairs()
+    storage_collisions = db.get_storage_collision_tx_pairs()
     # TODO: filter tx pairs (eg add a "same-from-to" label)
     # we could also link each collision regardless of distance
     # and then add block-distance as a label, could be useful for stats

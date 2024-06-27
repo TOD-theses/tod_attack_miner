@@ -15,4 +15,7 @@ class Miner:
 
     def get_attacks(self, start: int, end: int) -> Sequence[tuple[str, str]]:
         # TODO: only get attacks in the specified range
-        return self.db.get_storage_collisions_tx_pairs()
+        return [
+            (tx_a, tx_b)
+            for tx_a, tx_b, types in self.db.get_storage_collision_tx_pairs()
+        ]

@@ -1,12 +1,16 @@
 from pathlib import Path
 import sqlite3
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
 
 _TABLES = {
-    "prestates": "(hash TEXT PRIMARY KEY) STRICT",
-    "storage_prestates": "(tx_hash TEXT, block_number INTEGER, tx_index INTEGER, addr TEXT, key TEXT, value TEXT) STRICT",
+    "transactions": "(hash TEXT PRIMARY KEY) STRICT",
+    "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT) STRICT",
 }
+
+ACCESS_TYPE = (
+    Literal["storage"] | Literal["code"] | Literal["balance"] | Literal["nonce"]
+)
 
 
 class DB:
@@ -26,56 +30,91 @@ class DB:
         self._prestate_traces.append((block_number, prestate))
         with self._con:
             cursor = self._con.cursor()
-            cursor.execute("INSERT INTO prestates VALUES (?)", (prestate["txHash"],))
+            cursor.execute("INSERT INTO transactions VALUES (?)", (prestate["txHash"],))
 
-            for addr in prestate["result"]:
-                for key, val in prestate["result"][addr].get("storage", {}).items():
-                    values = (
-                        prestate["txHash"],
-                        block_number,
-                        tx_index,
-                        addr,
-                        key,
-                        val,
+            accesses: list[tuple[int, int, str, ACCESS_TYPE, str, str]] = []
+            for addr, state in prestate["result"].items():
+                if (balance := state.get("balance")) is not None:
+                    accesses.append(
+                        (
+                            block_number,
+                            tx_index,
+                            prestate["txHash"],
+                            "balance",
+                            addr,
+                            balance,
+                        )
                     )
-                    cursor.execute(
-                        "INSERT INTO storage_prestates VALUES (?, ?, ?, ?, ?, ?)",
-                        values,
+                if (code := state.get("code")) is not None:
+                    accesses.append(
+                        (block_number, tx_index, prestate["txHash"], "code", addr, code)
                     )
+                if (nonce := state.get("nonce")) is not None:
+                    accesses.append(
+                        (
+                            block_number,
+                            tx_index,
+                            prestate["txHash"],
+                            "nonce",
+                            addr,
+                            str(nonce),
+                        )
+                    )
+                for key, val in state.get("storage", {}).items():
+                    accesses.append(
+                        (
+                            block_number,
+                            tx_index,
+                            prestate["txHash"],
+                            "storage",
+                            f"{addr}_{key}",
+                            val,
+                        )
+                    )
+
+        cursor.executemany(
+            "INSERT INTO accesses VALUES (?, ?, ?, ?, ?, ?)",
+            accesses,
+        )
 
     def insert_block(self, block: BlockWithTransactions):
         self._blocks.append(block)
 
     def count_prestates(self) -> int:
         cursor = self._con.cursor()
-        cursor.execute("SELECT count(*) FROM prestates")
+        cursor.execute("SELECT count(*) FROM transactions")
         return cursor.fetchone()
 
-    def get_storage_collisions_tx_pairs(self) -> Sequence[tuple[str, str]]:
+    def get_storage_collision_tx_pairs(
+        self,
+    ) -> Sequence[tuple[str, str, frozenset[ACCESS_TYPE]]]:
         cursor = self._con.cursor()
         sql = """
-SELECT a.tx_hash, b.tx_hash
-FROM storage_prestates a
-INNER JOIN storage_prestates b
-ON a.addr = b.addr
-	AND a.key = b.key
+SELECT a.tx_hash, b.tx_hash, group_concat(a.type)
+FROM accesses a
+INNER JOIN accesses b
+ON a.type = b.type
+    AND a.type = 'storage'
+    AND a.key = b.key
     AND a.value != b.value
     AND a.tx_index < b.tx_index
     AND abs(b.block_number - a.block_number) <= 0
     GROUP BY a.tx_hash, b.tx_hash
 """
         cursor.execute(sql)
-        results = cursor.fetchall()
-        return results
+        results: Sequence[tuple[str, str, str]] = cursor.fetchall()
+        return [
+            (tx_a, tx_b, frozenset(types.split(","))) for tx_a, tx_b, types in results
+        ]  # type: ignore
 
     def get_storage_collisions_contract_addresses(self) -> Any:
         cursor = self._con.cursor()
         sql = """
 SELECT a.addr, count(a.tx_hash)/2 as tx_count
-FROM storage_prestates a
-INNER JOIN storage_prestates b
-ON a.addr = b.addr
-	AND a.key = b.key
+FROM accesses a
+INNER JOIN accesses b
+ON a.type = b.type
+    AND a.type = 'storage'
     AND a.value != b.value
     AND abs(b.block_number - a.block_number) <= 0
     GROUP BY a.addr
