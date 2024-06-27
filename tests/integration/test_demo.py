@@ -10,6 +10,7 @@ def run_collisions_test(
     prestates: list[TxPrestate],
     blocks: list[BlockWithTransactions],
     expected_collisions: list[set[str | frozenset]],
+    expected_dependencies: list[tuple],
 ):
     block_range = BlockRange(
         min(b["number"] for b in blocks), max(b["number"] for b in blocks)
@@ -32,6 +33,10 @@ def run_collisions_test(
     )
 
     assert collision_transactions_set == expected_collisions_set
+
+    db.build_dependencies()
+    dependencies = db.get_dependencies()
+    assert dependencies == expected_dependencies
 
 
 def test_demo():
@@ -95,5 +100,9 @@ def test_demo():
         {"0x1111", "0x2222", frozenset({"storage"})},
         {"0x1111", "0x4444", frozenset({"storage"})},
     ]
+    expected_dependencies: list[tuple] = [
+        ("0x1111", "0x2222", 0),
+        ("0x1111", "0x4444", 0),
+    ]
 
-    run_collisions_test(prestates, blocks, expected_collisions)
+    run_collisions_test(prestates, blocks, expected_collisions, expected_dependencies)
