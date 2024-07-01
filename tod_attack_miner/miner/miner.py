@@ -13,9 +13,20 @@ class Miner:
     def fetch(self, start: int, end: int) -> None:
         fetch_block_range(self.rpc, self.db, BlockRange(start, end))
 
-    def get_attacks(self, start: int, end: int) -> Sequence[tuple[str, str]]:
+    def find_conflicts(self) -> None:
+        self.db.insert_conflicts()
+
+    def get_attacks(
+        self, start: int, end: int
+    ) -> Sequence[tuple[str, str, tuple[str, str, int]]]:
         # TODO: only get attacks in the specified range
-        return [
-            (tx_a, tx_b)
-            for tx_a, tx_b, types in self.db.get_storage_collision_tx_pairs()
-        ]
+        return self.db.get_collisions()
+
+    def get_stats(self):
+        return {
+            "accesses": self.db.get_accesses_stats(),
+            "state_diffs": self.db.get_state_diffs_stats(),
+            "conflicts": self.db.get_conflicts_stats(),
+            "addresses_est": self.db.get_unique_addresses_stats(),
+            "addresses_est_total": self.db.get_unique_addresses_total(),
+        }

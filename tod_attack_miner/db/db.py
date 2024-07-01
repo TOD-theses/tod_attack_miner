@@ -1,25 +1,25 @@
 from pathlib import Path
 import sqlite3
-from typing import Any, Literal, Sequence, cast
-from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
+from typing import Literal, Sequence
+from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
 _TABLES = {
     "transactions": "(hash TEXT PRIMARY KEY, block_number INTEGER, tx_index INTEGER) STRICT",
     "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT) STRICT",
-    "dependencies": "(tx_a TEXT, tx_b HASH, block_diff INTEGER)",
+    "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT) STRICT",
+    "collisions": "(tx_write_hash TEXT, tx_access_hash, type TEXT, key TEXT, block_dist INTEGER)",
 }
 
 ACCESS_TYPE = (
     Literal["storage"] | Literal["code"] | Literal["balance"] | Literal["nonce"]
 )
+types: Sequence[ACCESS_TYPE] = ["storage", "code", "balance", "nonce"]
 
 
 class DB:
     def __init__(self, database_path: Path) -> None:
         self._con = sqlite3.connect(database_path)
         self._setup_tables()
-        self._prestate_traces: list[tuple[int, TxPrestate]] = []
-        self._blocks: list[BlockWithTransactions] = []
 
     def _setup_tables(self):
         with self._con:
@@ -28,7 +28,6 @@ class DB:
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {name} {definition}")
 
     def insert_prestate(self, block_number: int, tx_index: int, prestate: TxPrestate):
-        self._prestate_traces.append((block_number, prestate))
         with self._con:
             cursor = self._con.cursor()
             cursor.execute(
@@ -81,35 +80,115 @@ class DB:
             accesses,
         )
 
-    def build_dependencies(self):
-        # map tx (key) to closest tx it depends on
-        dependencies: dict[str, dict] = {}
+    def insert_state_diff(
+        self, block_number: int, tx_index: int, state_diff: TxStateDiff
+    ):
+        pre, post = state_diff["result"]["pre"], state_diff["result"]["post"]
+        with self._con:
+            cursor = self._con.cursor()
 
-        for c in self._get_collisions():
-            if c["tx_b"] not in dependencies:
-                dependencies[c["tx_b"]] = c
-            else:
-                prev = c["tx_b"]
-                if c["block_dist"] < prev["block_dist"]:
-                    dependencies[c["tx_b"]] = c
-                elif (
-                    c["block_dist"] == prev["block_dist"]
-                    and c["tx_a_index"] > prev["tx_a_index"]
-                ):
-                    dependencies[c["tx_b"]] = c
+            state_diffs: list[tuple[int, int, str, ACCESS_TYPE, str, str, str]] = []
 
-        values = [
-            (c["tx_a"], c["tx_b"], c["block_dist"]) for c in dependencies.values()
-        ]
-        self._con.cursor().executemany(
-            "INSERT INTO dependencies VALUES (?, ?, ?)", values
+            for addr, prestate in pre.items():
+                poststate = post[addr]
+
+                if (pre_balance := prestate.get("balance")) is not None:
+                    assert "balance" in poststate
+                    post_balance = poststate["balance"]
+                    assert pre_balance != post_balance
+
+                    state_diffs.append(
+                        (
+                            block_number,
+                            tx_index,
+                            state_diff["txHash"],
+                            "balance",
+                            addr,
+                            pre_balance,
+                            post_balance,
+                        )
+                    )
+                if (pre_code := prestate.get("code")) is not None:
+                    assert "code" in poststate
+                    post_code = poststate["code"]
+                    assert pre_code != post_code
+                    state_diffs.append(
+                        (
+                            block_number,
+                            tx_index,
+                            state_diff["txHash"],
+                            "code",
+                            addr,
+                            pre_code,
+                            post_code,
+                        )
+                    )
+                if (pre_nonce := prestate.get("nonce")) is not None:
+                    assert "nonce" in poststate
+                    post_nonce = poststate["nonce"]
+                    assert pre_nonce != post_nonce
+                    state_diffs.append(
+                        (
+                            block_number,
+                            tx_index,
+                            state_diff["txHash"],
+                            "nonce",
+                            addr,
+                            str(pre_nonce),
+                            str(post_nonce),
+                        )
+                    )
+                pre_storage = prestate.get("storage", {})
+                post_storage = poststate.get("storage", {})
+                for key, pre_val in pre_storage.items():
+                    post_val = post_storage[key]
+                    assert pre_val != post_val
+                    state_diffs.append(
+                        (
+                            block_number,
+                            tx_index,
+                            state_diff["txHash"],
+                            "storage",
+                            f"{addr}_{key}",
+                            pre_val,
+                            post_val,
+                        )
+                    )
+
+        cursor.executemany(
+            "INSERT INTO state_diffs VALUES (?, ?, ?, ?, ?, ?, ?)",
+            state_diffs,
         )
 
-    def get_dependencies(self):
-        return self._con.cursor().execute("SELECT * FROM dependencies").fetchall()
+    def insert_conflicts(self):
+        cursor = self._con.cursor()
+        sql = """
+INSERT INTO collisions
+SELECT state_diffs.tx_hash, accesses.tx_hash, accesses.type, accesses.key, accesses.block_number - state_diffs.block_number
+FROM accesses
+INNER JOIN state_diffs
+ON accesses.type = state_diffs.type
+    AND accesses.key = state_diffs.key
+    /* NOTE: more similar to Zhang et al.: AND accesses.value != state_diffs.pre_value */
+    AND accesses.value = state_diffs.post_value
+    AND (
+        accesses.block_number - state_diffs.block_number > 0
+        OR (accesses.block_number = state_diffs.block_number
+            AND accesses.tx_index > state_diffs.tx_index)
+    )
+GROUP BY accesses.tx_hash, state_diffs.tx_hash, accesses.type, accesses.key, accesses.block_number - state_diffs.block_number
+"""
+        cursor.execute(sql)
+
+    def get_conflicts_stats(self):
+        return (
+            self._con.cursor()
+            .execute("SELECT type, COUNT(*) FROM collisions GROUP BY type")
+            .fetchall()
+        )
 
     def insert_block(self, block: BlockWithTransactions):
-        self._blocks.append(block)
+        pass
 
     def count_prestates(self) -> int:
         cursor = self._con.cursor()
@@ -118,58 +197,62 @@ class DB:
 
     def _get_collisions(self, additional_filters=[]):
         cursor = self._con.cursor()
-        additional_filters_clauses = ""
+        filter = ""
         if additional_filters:
-            additional_filters_clauses = "AND " + " AND ".join(additional_filters)
+            filter = "WHERE " + " AND ".join(additional_filters)
         sql = f"""
-SELECT a.tx_hash, b.tx_hash, group_concat(a.type), b.block_number - a.block_number, a.tx_index, b.tx_index
-FROM accesses a
-INNER JOIN accesses b
-ON a.type = b.type
-    {additional_filters_clauses}
-    AND a.key = b.key
-    AND a.value != b.value
-    AND a.tx_index < b.tx_index
-    AND a.block_number <= b.block_number
-    GROUP BY a.tx_hash, b.tx_hash, a.tx_index, b.tx_index, b.block_number - a.block_number
+SELECT tx_write_hash, tx_access_hash, type, key TEXT, block_dist INTEGER
+FROM collisions
+{filter}
 """
         cursor.execute(sql)
-        results: Sequence[tuple[str, str, str, int, int, int]] = cursor.fetchall()
+        results: Sequence[tuple[str, str, str, str, int]] = cursor.fetchall()
         result_dicts = [
             {
-                "tx_a": tx_a,
-                "tx_b": tx_b,
-                "types": frozenset(cast(list[ACCESS_TYPE], types.split(","))),
-                "block_dist": block_distance,
-                "tx_a_index": tx_a_index,
-                "tx_b_index": tx_b_index,
+                "tx_write": tx_a,
+                "tx_access": tx_b,
+                "type": type,
+                "key": key,
+                "block_dist": block_dist,
             }
-            for tx_a, tx_b, types, block_distance, tx_a_index, tx_b_index in results
+            for tx_a, tx_b, type, key, block_dist in results
         ]
         return result_dicts
 
-    def get_storage_collision_tx_pairs(
-        self,
-    ) -> Sequence[tuple[str, str, frozenset[ACCESS_TYPE]]]:
-        collisions = self._get_collisions(["a.type = 'storage'"])
-        return [(c["tx_a"], c["tx_b"], c["types"]) for c in collisions]
+    def get_collisions(self) -> Sequence[tuple[str, str, tuple[str, str, int]]]:
+        return [
+            (c["tx_write"], c["tx_access"], (c["type"], c["key"], c["block_dist"]))
+            for c in self._get_collisions()
+        ]
 
-    def get_storage_collisions_contract_addresses(self) -> Any:
+    def get_accesses_stats(self):
+        return (
+            self._con.cursor()
+            .execute("SELECT type, COUNT(*) FROM accesses GROUP by type")
+            .fetchall()
+        )
+
+    def get_state_diffs_stats(self):
+        return (
+            self._con.cursor()
+            .execute("SELECT type, COUNT(*) FROM state_diffs GROUP by type")
+            .fetchall()
+        )
+
+    def get_unique_addresses_stats(self):
         cursor = self._con.cursor()
         sql = """
-SELECT a.addr, count(a.tx_hash)/2 as tx_count
-FROM accesses a
-INNER JOIN accesses b
-ON a.type = b.type
-    AND a.type = 'storage'
-    AND a.value != b.value
-    AND abs(b.block_number - a.block_number) <= 0
-    GROUP BY a.addr
-ORDER BY tx_count DESC
+SELECT SUBSTR(key, 1, 42), COUNT(*) as n
+FROM collisions
+GROUP BY SUBSTR(key, 1, 42) HAVING COUNT(*) >= 10
+ORDER BY n DESC
 """
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        return results
+        return cursor.execute(sql).fetchall()
 
-    def get_all_blocks(self) -> list[BlockWithTransactions]:
-        return self._blocks
+    def get_unique_addresses_total(self):
+        cursor = self._con.cursor()
+        sql = """
+SELECT COUNT(DISTINCT SUBSTR(key, 1, 42))
+FROM collisions
+"""
+        return cursor.execute(sql).fetchall()

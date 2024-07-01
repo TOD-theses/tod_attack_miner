@@ -7,9 +7,15 @@ See https://tod-theses.github.io/tod_attack_miner/.
 
 # TODO
 
-Check if the prestate tracer includes non-initialized state (eg if I load the balance of a non-existing account, or an SLOAD to a random key returning 0).
-If this is the case, what does this imply for the TOD results? If $T_A$ sets some value and $T_B$ accesses it, it will be included if it is non-null?
-(And what would this imply for the revm-replayer?)
+Staged filtering:
+- stats mode: for all collisions, each stage checks this collision and potentially stores a label (eg SAME_SENDER)
+- run mode: for all remaining, unlabelled, collisions, each stage checks this collision and potentially stores a label
+
+The filter implementations can be the same for both modes, only the execution differs. The run mode will be more performant. The stats mode could be nice for analysis and statistics in the paper.
+
+Check if write-write TODs are also found (ie if prestate includes everything that is in state_diff.pre).
+
+Check if/how to exclude builders (most frequent conflicts currently): eg 0x95222290dd7278aa3ddd389cc1e1d165cc4ba.
 
 ## Install
 

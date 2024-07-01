@@ -15,16 +15,18 @@ def main():
         "--version", action="version", version="%(prog)s " + version("tod_attack_miner")
     )
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
-    parser.add_argument("--from-block", default=19895498)
-    parser.add_argument("--to-block", default=19895498 + 100 - 1)
+    parser.add_argument("--from-block", default=19895500)
+    parser.add_argument("--to-block", default=19895500 + 100 - 1)
     parser.add_argument("--database-path", type=Path, default="tod_attacks.db")
     args = parser.parse_args()
 
     miner = Miner(args.archive_node_provider, args.database_path)
 
     miner.fetch(int(args.from_block), int(args.to_block))
+    quit()
 
     db = miner.db
+    print("accesses", db.get_accesses_stats())
     print(f"Stored transactions: {db.count_prestates()}")
     storage_collisions = db.get_storage_collision_tx_pairs()
     # TODO: filter tx pairs (eg add a "same-from-to" label)
@@ -36,6 +38,11 @@ def main():
     print(
         f"Unique transactions with storage collisions: {len(unique_transaction_hashes)}"
     )
+
+    # db.build_dependencies()
+    dependency_stats = db.get_dependencies_stats()
+    print("dependencies overview (block_distance, #collisions)")
+    print(dependency_stats)
 
     plot(db.get_storage_collisions_contract_addresses())
 

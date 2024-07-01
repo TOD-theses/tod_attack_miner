@@ -32,7 +32,7 @@ fmt:              ## Format/lint code using ruff format and ruff check
 .PHONY: lint
 lint:             ## Run ruff check and pyright
 	$(ENV_PREFIX)ruff check
-	$(ENV_PREFIX)pyright
+	$(ENV_PREFIX)pyright tod_attack_miner
 
 .PHONY: snapshots
 snapshots:        ## Run tests and overwrite existing snapshots.
