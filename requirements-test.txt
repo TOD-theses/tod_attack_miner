@@ -2,6 +2,7 @@
 pytest
 coverage
 pytest-cov
+pytest-recording
 gitchangelog
 mkdocs
 plantuml_markdown

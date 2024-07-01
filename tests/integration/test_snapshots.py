@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import pytest
 from tod_attack_miner.fetcher.fetcher import BlockRange
 from tod_attack_miner.miner.miner import Miner
 
@@ -8,6 +10,7 @@ test_provider_url = "http://localhost:8124/eth"
 test_db_path = Path("test_database.db")
 
 
+@pytest.mark.vcr
 def test_tod_attack_miner_e2e(snapshot: PyTestSnapshotTest):
     block_range = BlockRange(19895500, 19895504)
 

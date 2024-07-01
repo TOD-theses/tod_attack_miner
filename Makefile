@@ -36,7 +36,7 @@ lint:             ## Run ruff check and pyright
 
 .PHONY: snapshots
 snapshots:        ## Run tests and overwrite existing snapshots.
-	$(ENV_PREFIX)pytest -v --snapshot-update tests/
+	$(ENV_PREFIX)pytest -v --snapshot-update --record-mode=new_episodes tests/
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
