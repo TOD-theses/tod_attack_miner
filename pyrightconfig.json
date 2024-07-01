@@ -1,2 +1,3 @@
 {
+    "exclude": ["**/snap_test_*"]
 }

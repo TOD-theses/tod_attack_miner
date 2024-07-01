@@ -1,11 +1,13 @@
 # This requirements are for development and testing only, not for production.
-pytest
 coverage
-pytest-cov
-pytest-recording
 gitchangelog
 mkdocs
 plantuml_markdown
 pyright
+pytest
+pytest-cov
+pytest-recording
+pytest-postgresql
+psycopg[binary]
 ruff
 snapshottest

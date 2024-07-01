@@ -21,9 +21,11 @@ Check if/how to exclude builders (most frequent conflicts currently): eg 0x95222
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation instructions.
 
+We also use a postgres database, which you can run with eg `docker run --rm --name miner_postgres -p 5432:5432 -e POSTGRES_PASSWORD=password postgres`
+
 ## Usage
 
-After installing it, you can run it as following:
+After installing and creating the database, you can run it as following:
 
 ```bash
 $ python -m tod_attack_miner --help

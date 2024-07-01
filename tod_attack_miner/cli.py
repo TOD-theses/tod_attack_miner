@@ -2,11 +2,15 @@
 
 from argparse import ArgumentParser
 from importlib.metadata import version
-from pathlib import Path
 from typing import Any
 
+import psycopg
+
+from tod_attack_miner.db.db import DB
 from tod_attack_miner.miner.miner import Miner
 import matplotlib.pyplot as plt
+
+from tod_attack_miner.rpc.rpc import RPC
 
 
 def main():
@@ -17,34 +21,22 @@ def main():
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
     parser.add_argument("--from-block", default=19895500)
     parser.add_argument("--to-block", default=19895500 + 100 - 1)
-    parser.add_argument("--database-path", type=Path, default="tod_attacks.db")
+    parser.add_argument("--postgres-user", type=str, default="postgres")
+    parser.add_argument("--postgres-password", type=str, default="password")
+    parser.add_argument("--postgres-host", type=str, default="localhost")
+    parser.add_argument("--postgres-port", type=int, default=5432)
     args = parser.parse_args()
 
-    miner = Miner(args.archive_node_provider, args.database_path)
+    with psycopg.connect(
+        f"user={args.postgres_user} password={args.postgres_password} host={args.postgres_host} port={args.postgres_port}"
+    ) as conn:
+        miner = Miner(RPC(args.archive_node_provider), DB(conn))
 
-    miner.fetch(int(args.from_block), int(args.to_block))
-    quit()
+        miner.fetch(int(args.from_block), int(args.to_block))
+        miner.find_conflicts()
+        print(miner.get_stats())
 
-    db = miner.db
-    print("accesses", db.get_accesses_stats())
-    print(f"Stored transactions: {db.count_prestates()}")
-    storage_collisions = db.get_storage_collision_tx_pairs()
-    # TODO: filter tx pairs (eg add a "same-from-to" label)
-    # we could also link each collision regardless of distance
-    # and then add block-distance as a label, could be useful for stats
-    print(f"Tx pairs with storage collisions: {len(storage_collisions)}")
-    print("first 10 collisions: ", storage_collisions[:10])
-    unique_transaction_hashes = set(collision[0] for collision in storage_collisions)
-    print(
-        f"Unique transactions with storage collisions: {len(unique_transaction_hashes)}"
-    )
-
-    # db.build_dependencies()
-    dependency_stats = db.get_dependencies_stats()
-    print("dependencies overview (block_distance, #collisions)")
-    print(dependency_stats)
-
-    plot(db.get_storage_collisions_contract_addresses())
+        # plot(db.get_storage_collisions_contract_addresses())
 
 
 def plot(values: list[tuple[Any, Any]]):
