@@ -34,6 +34,10 @@ lint:             ## Run ruff check and pyright
 	$(ENV_PREFIX)ruff check
 	$(ENV_PREFIX)pyright
 
+.PHONY: snapshots
+snapshots:        ## Run tests and overwrite existing snapshots.
+	$(ENV_PREFIX)pytest -v --snapshot-update tests/
+
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
 	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=tod_attack_miner -l --tb=short --maxfail=1 tests/

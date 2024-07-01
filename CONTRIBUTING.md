@@ -17,6 +17,10 @@ Run `make install` to install the project in develop mode.
 
 Run `make test` to run the tests.
 
+## Update test snapshots
+
+Run `make snapshots` to overwrite existing snapshot files.
+
 ## Format the code
 
 Run `make fmt` to format the code.
@@ -53,17 +57,17 @@ Usage: make <target>
 
 Targets:
 help:             ## Show the help.
+show:             ## Show the current environment.
 install:          ## Install the project in dev mode.
-fmt:              ## Format code using black & isort.
-lint:             ## Run pep8, black, mypy linters.
+fmt:              ## Format/lint code using ruff format and ruff check
+lint:             ## Run ruff check and pyright
+snapshots:        ## Run tests and overwrite existing snapshots.
 test: lint        ## Run tests and generate coverage report.
 watch:            ## Run tests on every change.
 clean:            ## Clean unused files.
 virtualenv:       ## Create a virtual environment.
 release:          ## Create a new tag for release.
 docs:             ## Build the documentation.
-switch-to-poetry: ## Switch to poetry package manager.
-init:             ## Initialize the project based on an application template.
 ```
 
 ## Making a new release

@@ -1,4 +1,7 @@
-from tod_attack_miner.rpc.state_diff_utils import state_diff_fill_implicit_fields, state_diff_remove_unchanged_fields
+from tod_attack_miner.rpc.state_diff_utils import (
+    state_diff_fill_implicit_fields,
+    state_diff_remove_unchanged_fields,
+)
 from tod_attack_miner.rpc.types import TxStateDiff
 
 
@@ -140,6 +143,7 @@ def test_state_diff_fill_implicit_fields_deleted_account():
         },
     }
 
+
 def test_state_diff_remove_unchanged_fields():
     state_diff: TxStateDiff = {
         "txHash": "0x546ae70f03245666451baa00dafa31f548b6d43a92ec5d900f1ea5c33ba294e0",
@@ -161,10 +165,9 @@ def test_state_diff_remove_unchanged_fields():
 
     state_diff_remove_unchanged_fields(state_diff)
 
-    assert state_diff["result"]["pre"]["0xd143677c48256c4a22560add96e44eebfa331840"] == {
-        "nonce": 1
-    }
-    assert state_diff["result"]["post"]["0xd143677c48256c4a22560add96e44eebfa331840"] == {
-        "nonce": 2
-    }
-
+    assert state_diff["result"]["pre"][
+        "0xd143677c48256c4a22560add96e44eebfa331840"
+    ] == {"nonce": 1}
+    assert state_diff["result"]["post"][
+        "0xd143677c48256c4a22560add96e44eebfa331840"
+    ] == {"nonce": 2}

@@ -146,7 +146,6 @@ ON a.type = b.type
             }
             for tx_a, tx_b, types, block_distance, tx_a_index, tx_b_index in results
         ]
-        print(result_dicts)
         return result_dicts
 
     def get_storage_collision_tx_pairs(
