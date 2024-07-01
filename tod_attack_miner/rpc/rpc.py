@@ -5,7 +5,7 @@ from web3.types import RPCEndpoint
 from web3.method import Method
 from web3.datastructures import AttributeDict
 
-from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate
+from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
 
 class RPC:
@@ -32,6 +32,13 @@ class RPC:
             hex(block_number), {"tracer": "prestateTracer"}
         )
         return [_attribute_dict_to_dict(prestate) for prestate in trace]
+
+    def fetch_state_diffs(self, block_number: int) -> list[TxStateDiff]:
+        trace: list[AttributeDict] = self.w3.eth.debug_traceBlockByNumber(  # type: ignore
+            hex(block_number),
+            {"tracer": "prestateTracer", "tracerConfig": {"diffMode": True}},
+        )
+        return [_attribute_dict_to_dict(statediff) for statediff in trace]
 
 
 def _attribute_dict_to_dict(attribute_dict: AttributeDict) -> Any:

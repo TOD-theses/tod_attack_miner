@@ -72,3 +72,13 @@ class AccountState(TypedDict, total=False):
 class TxPrestate(TypedDict):
     txHash: str
     result: dict[str, AccountState]
+
+
+class PrePostState(TypedDict):
+    pre: dict[str, AccountState]
+    post: dict[str, AccountState]
+
+
+class TxStateDiff(TypedDict):
+    txHash: str
+    result: PrePostState
