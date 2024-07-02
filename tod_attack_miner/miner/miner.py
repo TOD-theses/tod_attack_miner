@@ -15,7 +15,7 @@ class Miner:
     def find_conflicts(self) -> None:
         self.db.insert_conflicts()
 
-    def get_attacks(
+    def get_conflicts(
         self, start: int, end: int
     ) -> Sequence[tuple[str, str, tuple[str, str, int]]]:
         # TODO: only get attacks in the specified range

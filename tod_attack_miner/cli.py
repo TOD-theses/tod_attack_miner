@@ -1,14 +1,13 @@
 """CLI interface for tod_attack_miner project."""
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 from importlib.metadata import version
-from typing import Any
+import json
 
 import psycopg
 
 from tod_attack_miner.db.db import DB
 from tod_attack_miner.miner.miner import Miner
-import matplotlib.pyplot as plt
 
 from tod_attack_miner.rpc.rpc import RPC
 
@@ -25,6 +24,7 @@ def main():
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
     parser.add_argument("--postgres-port", type=int, default=5432)
+    parser.add_argument('--stats-only', action=BooleanOptionalAction, help='Skip data fetching and processing and only output stats')
     args = parser.parse_args()
 
     with psycopg.connect(
@@ -32,15 +32,7 @@ def main():
     ) as conn:
         miner = Miner(RPC(args.archive_node_provider), DB(conn))
 
-        miner.fetch(int(args.from_block), int(args.to_block))
-        miner.find_conflicts()
-        print(miner.get_stats())
-
-        # plot(db.get_storage_collisions_contract_addresses())
-
-
-def plot(values: list[tuple[Any, Any]]):
-    fig, ax = plt.subplots()
-    counts = list(count for _, count in values)
-    ax.pie(counts)
-    plt.show()
+        if not args.stats_only:
+            miner.fetch(int(args.from_block), int(args.to_block))
+            miner.find_conflicts()
+        print(json.dumps(miner.get_stats()))
