@@ -24,7 +24,11 @@ def main():
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
     parser.add_argument("--postgres-port", type=int, default=5432)
-    parser.add_argument('--stats-only', action=BooleanOptionalAction, help='Skip data fetching and processing and only output stats')
+    parser.add_argument(
+        "--stats-only",
+        action=BooleanOptionalAction,
+        help="Skip data fetching and processing and only output stats",
+    )
     args = parser.parse_args()
 
     with psycopg.connect(

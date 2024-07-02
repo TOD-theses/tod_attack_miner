@@ -1,3 +1,4 @@
+import hashlib
 from typing import Literal, Sequence, cast
 
 import psycopg
@@ -67,7 +68,14 @@ class DB:
                     )
                 if (code := state.get("code")) is not None:
                     accesses.append(
-                        (block_number, tx_index, prestate["txHash"], "code", addr, code)
+                        (
+                            block_number,
+                            tx_index,
+                            prestate["txHash"],
+                            "code",
+                            addr,
+                            hash_code(code),
+                        )
                     )
                 if (nonce := state.get("nonce")) is not None:
                     accesses.append(
@@ -135,8 +143,8 @@ class DB:
                             state_diff["txHash"],
                             "code",
                             addr,
-                            pre_code,
-                            post_code,
+                            hash_code(pre_code),
+                            hash_code(post_code),
                         )
                     )
                 if (pre_nonce := prestate.get("nonce")) is not None:
@@ -265,3 +273,8 @@ SELECT COUNT(DISTINCT SUBSTR(key, 1, 42))
 FROM collisions
 """
         return cursor.execute(sql).fetchall()
+
+
+def hash_code(code: str) -> str:
+    """Some hash of the code, not the EVM hash"""
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
