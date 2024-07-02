@@ -26,6 +26,8 @@ class Miner:
             "accesses": self.db.get_accesses_stats(),
             "state_diffs": self.db.get_state_diffs_stats(),
             "conflicts": self.db.get_conflicts_stats(),
+            "candidates_original": self.db.count_candidates_original(),
+            "candidates_semi": self.db.count_candidates_semi_direct_deps(),
             "addresses_est": self.db.get_unique_addresses_stats(),
             "addresses_est_total": self.db.get_unique_addresses_total(),
         }

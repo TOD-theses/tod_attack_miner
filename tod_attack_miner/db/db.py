@@ -206,6 +206,47 @@ class DB:
             cursor.execute(sql)
         self._con.commit()
 
+    def count_candidates_original(self):
+        with self._con.cursor() as cursor:
+            sql = """
+            SELECT COUNT(*)
+            FROM (
+    SELECT 1
+    FROM accesses
+    INNER JOIN state_diffs
+    ON accesses.type = state_diffs.type
+        AND accesses.key = state_diffs.key
+        AND (
+            accesses.block_number - state_diffs.block_number > 0
+            OR (accesses.block_number = state_diffs.block_number
+                AND accesses.tx_index > state_diffs.tx_index)
+        )
+    GROUP BY accesses.tx_hash, state_diffs.tx_hash
+    ) x
+    """
+            return cursor.execute(sql).fetchall()
+
+    def count_candidates_semi_direct_deps(self):
+        with self._con.cursor() as cursor:
+            sql = """
+            SELECT COUNT(*)
+            FROM (
+    SELECT 1
+    FROM accesses
+    INNER JOIN state_diffs
+    ON accesses.type = state_diffs.type
+        AND accesses.key = state_diffs.key
+        AND accesses.value = state_diffs.post_value
+        AND (
+            accesses.block_number - state_diffs.block_number > 0
+            OR (accesses.block_number = state_diffs.block_number
+                AND accesses.tx_index > state_diffs.tx_index)
+        )
+    GROUP BY accesses.tx_hash, state_diffs.tx_hash
+    ) x
+    """
+            return cursor.execute(sql).fetchall()
+
     def insert_block(self, block: BlockWithTransactions):
         pass
 
@@ -261,8 +302,9 @@ FROM collisions
         sql = """
 SELECT SUBSTR(key, 1, 42) as addr, COUNT(*) as n
 FROM collisions
-GROUP BY SUBSTR(key, 1, 42) HAVING COUNT(*) >= 10
+GROUP BY SUBSTR(key, 1, 42)
 ORDER BY n DESC, addr ASC
+LIMIT 10
 """
         return cursor.execute(sql).fetchall()
 
