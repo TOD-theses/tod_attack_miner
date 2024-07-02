@@ -10,11 +10,12 @@ _TABLES = {
     "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT)",
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
     "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER)",
+    "candidates": "(tx_write_hash TEXT, tx_access_hash TEXT, PRIMARY KEY(tx_write_hash, tx_access_hash))",
 }
 # TODO: check if indexes are worth it
 _INDEXES = {
-    # "access_index": "accesses(block_number, tx_index, type, key)",
-    # "state_diffs_index": "state_diffs(block_number, tx_index, type, key)"
+    "accesses_type_key": "accesses(type, key, value)",
+    "state_diffs_type_key": "state_diffs(type, key, post_value)",
 }
 
 ACCESS_TYPE = (
@@ -206,6 +207,12 @@ class DB:
             cursor.execute(sql)
         self._con.commit()
 
+    def insert_candidates(self):
+        with self._con.cursor() as cursor:
+            sql = """INSERT INTO candidates SELECT tx_write_hash, tx_access_hash FROM collisions GROUP BY tx_write_hash, tx_access_hash"""
+            cursor.execute(sql)
+        self._con.commit()
+
     def count_candidates_original(self):
         with self._con.cursor() as cursor:
             sql = """
@@ -226,26 +233,9 @@ class DB:
     """
             return cursor.execute(sql).fetchall()
 
-    def count_candidates_semi_direct_deps(self):
+    def count_candidates(self):
         with self._con.cursor() as cursor:
-            sql = """
-            SELECT COUNT(*)
-            FROM (
-    SELECT 1
-    FROM accesses
-    INNER JOIN state_diffs
-    ON accesses.type = state_diffs.type
-        AND accesses.key = state_diffs.key
-        AND accesses.value = state_diffs.post_value
-        AND (
-            accesses.block_number - state_diffs.block_number > 0
-            OR (accesses.block_number = state_diffs.block_number
-                AND accesses.tx_index > state_diffs.tx_index)
-        )
-    GROUP BY accesses.tx_hash, state_diffs.tx_hash
-    ) x
-    """
-            return cursor.execute(sql).fetchall()
+            return cursor.execute("SELECT COUNT(*) FROM candidates").fetchall()
 
     def insert_block(self, block: BlockWithTransactions):
         pass

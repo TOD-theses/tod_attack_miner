@@ -14,6 +14,7 @@ class Miner:
 
     def find_conflicts(self) -> None:
         self.db.insert_conflicts()
+        self.db.insert_candidates()
 
     def get_conflicts(
         self, start: int, end: int
@@ -27,7 +28,7 @@ class Miner:
             "state_diffs": self.db.get_state_diffs_stats(),
             "conflicts": self.db.get_conflicts_stats(),
             "candidates_original": self.db.count_candidates_original(),
-            "candidates_semi": self.db.count_candidates_semi_direct_deps(),
+            "candidates": self.db.count_candidates(),
             "addresses_est": self.db.get_unique_addresses_stats(),
             "addresses_est_total": self.db.get_unique_addresses_total(),
         }

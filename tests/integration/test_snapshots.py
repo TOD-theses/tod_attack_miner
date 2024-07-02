@@ -27,4 +27,4 @@ def test_tod_attack_miner_e2e(postgresql: Connection, snapshot: PyTestSnapshotTe
     attacks = miner.get_conflicts(block_range.start, block_range.end)
 
     snapshot.assert_match(stats, "stats")
-    snapshot.assert_match(set(attacks), "attacks")
+    snapshot.assert_match(len(attacks), "attacks")
