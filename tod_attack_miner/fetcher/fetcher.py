@@ -27,7 +27,8 @@ class BlockRange:
 def fetch_block_range(rpc: RPC, db: DB, block_range: BlockRange):
     for block_number in (
         bar := tqdm(
-            range(block_range.start, block_range.end + 1), desc="Fetch prestate traces"
+            range(block_range.start, block_range.end + 1),
+            desc="Fetch traces and block metadata",
         )
     ):
         bar.set_postfix_str(f"block {block_number}")

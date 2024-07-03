@@ -8,6 +8,5 @@ pytest
 pytest-cov
 pytest-recording
 pytest-postgresql
-psycopg[binary]
 ruff
 snapshottest

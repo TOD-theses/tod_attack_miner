@@ -6,7 +6,7 @@ import psycopg.sql
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
 _TABLES = {
-    "transactions": "(hash TEXT PRIMARY KEY, block_number INTEGER, tx_index INTEGER)",
+    "transactions": "(hash TEXT PRIMARY KEY, block_number INTEGER, tx_index INTEGER, sender TEXT)",
     "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT)",
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
     "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER)",
@@ -15,7 +15,9 @@ _TABLES = {
 # TODO: check if indexes are worth it
 _INDEXES = {
     "accesses_type_key": "accesses(type, key, value)",
+    "accesses_tx_hash": "accesses(tx_hash)",
     "state_diffs_type_key": "state_diffs(type, key, post_value)",
+    "transactions_hash_sender": "transactions(hash, sender)",
 }
 
 ACCESS_TYPE = (
@@ -49,11 +51,6 @@ class DB:
 
     def insert_prestate(self, block_number: int, tx_index: int, prestate: TxPrestate):
         with self._con.cursor() as cursor:
-            cursor.execute(
-                psycopg.sql.SQL("INSERT INTO transactions VALUES (%s, %s, %s)"),
-                (prestate["txHash"], block_number, tx_index),
-            )
-
             accesses: list[tuple[int, int, str, ACCESS_TYPE, str, str]] = []
             for addr, state in prestate["result"].items():
                 if (balance := state.get("balance")) is not None:
@@ -231,14 +228,24 @@ class DB:
     GROUP BY accesses.tx_hash, state_diffs.tx_hash
     ) x
     """
-            return cursor.execute(sql).fetchall()
+            return cursor.execute(sql).fetchall()[0][0]
 
-    def count_candidates(self):
+    def count_candidates(self) -> int:
         with self._con.cursor() as cursor:
-            return cursor.execute("SELECT COUNT(*) FROM candidates").fetchall()
+            return cursor.execute("SELECT COUNT(*) FROM candidates").fetchall()[0][0]
 
     def insert_block(self, block: BlockWithTransactions):
-        pass
+        tx_values = [
+            (tx["hash"], block["number"], tx["transactionIndex"], tx["from"])
+            for tx in block["transactions"]
+        ]
+
+        with self._con.cursor() as cursor:
+            cursor.executemany(
+                psycopg.sql.SQL("INSERT INTO transactions VALUES (%s, %s, %s, %s)"),
+                tx_values,
+            )
+        self._con.commit()
 
     def _get_collisions(self):
         cursor = self._con.cursor()
@@ -260,11 +267,11 @@ FROM collisions
         ]
         return result_dicts
 
-    def get_collisions(self) -> Sequence[tuple[str, str, tuple[str, str, int]]]:
-        return [
-            (c["tx_write"], c["tx_access"], (c["type"], c["key"], c["block_dist"]))
-            for c in self._get_collisions()
-        ]
+    def get_candidates(self) -> Sequence[tuple[str, str]]:
+        with self._con.cursor() as cursor:
+            return cursor.execute(
+                "SELECT tx_write_hash, tx_access_hash FROM candidates"
+            ).fetchall()
 
     def get_accesses_stats(self):
         return dict(
@@ -304,7 +311,7 @@ LIMIT 10
 SELECT COUNT(DISTINCT SUBSTR(key, 1, 42))
 FROM collisions
 """
-        return cursor.execute(sql).fetchall()
+        return cursor.execute(sql).fetchall()[0][0]
 
 
 def hash_code(code: str) -> str:

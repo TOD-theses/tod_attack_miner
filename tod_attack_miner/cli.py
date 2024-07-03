@@ -36,7 +36,10 @@ def main():
     ) as conn:
         miner = Miner(RPC(args.archive_node_provider), DB(conn))
 
-        if not args.stats_only:
+        if args.stats_only:
+            print(json.dumps(miner.get_stats()))
+        else:
             miner.fetch(int(args.from_block), int(args.to_block))
             miner.find_conflicts()
-        print(json.dumps(miner.get_stats()))
+            miner.filter_candidates()
+            print(f"Found {miner.count_candidates()} candidates")
