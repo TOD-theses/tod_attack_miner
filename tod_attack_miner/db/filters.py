@@ -3,6 +3,22 @@ import psycopg.sql
 from tod_attack_miner.db.db import DB
 
 
+def filter_block_producers(db: DB):
+    sql = """
+DELETE FROM candidates
+WHERE NOT EXISTS (
+    SELECT *
+    FROM collisions c
+    WHERE c.tx_write_hash = candidates.tx_write_hash
+      AND c.tx_access_hash = candidates.tx_access_hash
+      AND NOT (c.type = 'balance' AND c.key IN (SELECT producer FROM blocks))
+)
+    """
+    with db._con.cursor() as cursor:
+        cursor.execute(sql)
+        return cursor.rowcount
+
+
 def filter_same_sender(db: DB):
     sql = """
 DELETE FROM candidates

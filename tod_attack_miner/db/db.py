@@ -6,6 +6,7 @@ import psycopg.sql
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
 _TABLES = {
+    "blocks": "(block_number INTEGER PRIMARY KEY, producer TEXT)",
     "transactions": "(hash TEXT PRIMARY KEY, block_number INTEGER, tx_index INTEGER, sender TEXT)",
     "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT)",
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
@@ -18,6 +19,7 @@ _INDEXES = {
     "accesses_tx_hash": "accesses(tx_hash)",
     "state_diffs_type_key": "state_diffs(type, key, post_value)",
     "transactions_hash_sender": "transactions(hash, sender)",
+    "blocks_number_producer": "blocks(block_number, producer)",
 }
 
 ACCESS_TYPE = (
@@ -58,10 +60,10 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            prestate["txHash"],
+                            prestate["txHash"].lower(),
                             "balance",
-                            addr,
-                            balance,
+                            addr.lower(),
+                            balance.lower(),
                         )
                     )
                 if (code := state.get("code")) is not None:
@@ -69,9 +71,9 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            prestate["txHash"],
+                            prestate["txHash"].lower(),
                             "code",
-                            addr,
+                            addr.lower(),
                             hash_code(code),
                         )
                     )
@@ -80,9 +82,9 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            prestate["txHash"],
+                            prestate["txHash"].lower(),
                             "nonce",
-                            addr,
+                            addr.lower(),
                             str(nonce),
                         )
                     )
@@ -91,10 +93,10 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            prestate["txHash"],
+                            prestate["txHash"].lower(),
                             "storage",
-                            f"{addr}_{key}",
-                            val,
+                            f"{addr}_{key}".lower(),
+                            val.lower(),
                         )
                     )
 
@@ -123,11 +125,11 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            state_diff["txHash"],
+                            state_diff["txHash"].lower(),
                             "balance",
-                            addr,
-                            pre_balance,
-                            post_balance,
+                            addr.lower(),
+                            pre_balance.lower(),
+                            post_balance.lower(),
                         )
                     )
                 if (pre_code := prestate.get("code")) is not None:
@@ -138,9 +140,9 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            state_diff["txHash"],
+                            state_diff["txHash"].lower(),
                             "code",
-                            addr,
+                            addr.lower(),
                             hash_code(pre_code),
                             hash_code(post_code),
                         )
@@ -153,9 +155,9 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            state_diff["txHash"],
+                            state_diff["txHash"].lower(),
                             "nonce",
-                            addr,
+                            addr.lower(),
                             str(pre_nonce),
                             str(post_nonce),
                         )
@@ -169,11 +171,11 @@ class DB:
                         (
                             block_number,
                             tx_index,
-                            state_diff["txHash"],
+                            state_diff["txHash"].lower(),
                             "storage",
-                            f"{addr}_{key}",
-                            pre_val,
-                            post_val,
+                            f"{addr}_{key}".lower(),
+                            pre_val.lower(),
+                            post_val.lower(),
                         )
                     )
 
@@ -192,7 +194,6 @@ class DB:
     INNER JOIN state_diffs
     ON accesses.type = state_diffs.type
         AND accesses.key = state_diffs.key
-        /* NOTE: more similar to Zhang et al.: AND accesses.value != state_diffs.pre_value */
         AND accesses.value = state_diffs.post_value
         AND (
             accesses.block_number - state_diffs.block_number > 0
@@ -236,14 +237,23 @@ class DB:
 
     def insert_block(self, block: BlockWithTransactions):
         tx_values = [
-            (tx["hash"], block["number"], tx["transactionIndex"], tx["from"])
+            (
+                tx["hash"].lower(),
+                block["number"],
+                tx["transactionIndex"],
+                tx["from"].lower(),
+            )
             for tx in block["transactions"]
         ]
 
         with self._con.cursor() as cursor:
             cursor.executemany(
-                psycopg.sql.SQL("INSERT INTO transactions VALUES (%s, %s, %s, %s)"),
+                "INSERT INTO transactions VALUES (%s, %s, %s, %s)",
                 tx_values,
+            )
+            cursor.execute(
+                "INSERT INTO blocks VALUES (%s, %s)",
+                (block["number"], block["miner"].lower()),
             )
         self._con.commit()
 

@@ -7,7 +7,7 @@ from snapshottest import Snapshot
 
 snapshots = Snapshot()
 
-snapshots["test_tod_attack_miner_e2e num_candidates"] = 694
+snapshots["test_tod_attack_miner_e2e num_candidates"] = 633
 
 snapshots["test_tod_attack_miner_e2e stats"] = {
     "accesses": {"balance": 4663, "code": 2248, "nonce": 4332, "storage": 8239},
@@ -24,18 +24,19 @@ snapshots["test_tod_attack_miner_e2e stats"] = {
         ("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 31),
     ],
     "addresses_est_total": 233,
-    "candidates": 694,
+    "candidates": 633,
     "candidates_filters": {
         "candidates": {
             "before_filters": 2193,
-            "final": 694,
+            "final": 633,
             "original_without_same_value": 264234,
         },
         "filtered": {
-            "indirect_dependencies_quick": 766,
-            "indirect_dependencies_recursive": 425,
-            "recipient_eth_transfer": 245,
-            "same_sender": 63,
+            "block_producers": 786,
+            "indirect_dependencies_quick": 386,
+            "indirect_dependencies_recursive": 49,
+            "recipient_eth_transfer": 151,
+            "same_sender": 188,
         },
     },
     "conflicts": {"balance": 1526, "nonce": 879, "storage": 708},
