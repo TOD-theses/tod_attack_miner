@@ -14,6 +14,17 @@ WHERE key = producer AND type = 'balance'
     return db.remove_candidates_without_collision()
 
 
+def filter_EOA_nonce_collisions(db: DB):
+    sql = """
+DELETE FROM collisions c
+USING transactions
+WHERE key = sender AND type = 'nonce'
+"""
+    with db._con.cursor() as cursor:
+        cursor.execute(sql)
+    return db.remove_candidates_without_collision()
+
+
 def filter_same_sender(db: DB):
     sql = """
 DELETE FROM candidates

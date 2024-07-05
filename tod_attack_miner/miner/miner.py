@@ -1,6 +1,7 @@
 from typing import Sequence
 from tod_attack_miner.db.db import DB
 from tod_attack_miner.db.filters import (
+    filter_EOA_nonce_collisions,
     filter_indirect_dependencies_recursive,
     filter_indirect_dependencies_quick,
     filter_same_sender,
@@ -16,6 +17,7 @@ class Miner:
         self.rpc = rpc
         self.db = db
         self._filter_stats = {"candidates": {}, "filtered": {}}
+        self._original_conflicts = {}
 
     def fetch(self, start: int, end: int) -> None:
         fetch_block_range(self.rpc, self.db, BlockRange(start, end))
@@ -23,10 +25,14 @@ class Miner:
     def find_conflicts(self) -> None:
         self.db.insert_conflicts()
         self.db.insert_candidates()
+        self._original_conflicts = self.db.get_conflicts_stats()
 
     def filter_candidates(self) -> None:
         self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
         self._filter_stats["filtered"]["block_producers"] = filter_block_producers(
+            self.db
+        )
+        self._filter_stats["filtered"]["eoa_nonces"] = filter_EOA_nonce_collisions(
             self.db
         )
         self._filter_stats["filtered"]["indirect_dependencies_quick"] = (
@@ -55,6 +61,7 @@ class Miner:
             "accesses": self.db.get_accesses_stats(),
             "state_diffs": self.db.get_state_diffs_stats(),
             "conflicts": self.db.get_conflicts_stats(),
+            "conflicts_before_filters": self._original_conflicts,
             "candidates_filters": self._filter_stats,
             "candidates": self.db.count_candidates(),
             "addresses_est": self.db.get_unique_addresses_stats(),
