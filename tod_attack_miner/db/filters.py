@@ -5,18 +5,13 @@ from tod_attack_miner.db.db import DB
 
 def filter_block_producers(db: DB):
     sql = """
-DELETE FROM candidates
-WHERE NOT EXISTS (
-    SELECT *
-    FROM collisions c
-    WHERE c.tx_write_hash = candidates.tx_write_hash
-      AND c.tx_access_hash = candidates.tx_access_hash
-      AND NOT (c.type = 'balance' AND c.key IN (SELECT producer FROM blocks))
-)
+DELETE FROM collisions c
+USING blocks
+WHERE key = producer AND type = 'balance'
     """
     with db._con.cursor() as cursor:
         cursor.execute(sql)
-        return cursor.rowcount
+    return db.remove_candidates_without_collision()
 
 
 def filter_same_sender(db: DB):
