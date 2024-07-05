@@ -221,6 +221,20 @@ WHERE NOT EXISTS (
 )"""
         with self._con.cursor() as cursor:
             cursor.execute(sql)
+            self._con.commit()
+            return cursor.rowcount
+
+    def remove_collisions_without_candidate(self) -> int:
+        sql = """DELETE FROM collisions
+WHERE NOT EXISTS (
+    SELECT *
+    FROM candidates c
+    WHERE c.tx_write_hash = collisions.tx_write_hash
+      AND c.tx_access_hash = collisions.tx_access_hash
+)"""
+        with self._con.cursor() as cursor:
+            cursor.execute(sql)
+            self._con.commit()
             return cursor.rowcount
 
     def count_candidates_original(self):
@@ -269,26 +283,6 @@ WHERE NOT EXISTS (
             )
         self._con.commit()
 
-    def _get_collisions(self):
-        cursor = self._con.cursor()
-        sql = """
-SELECT tx_write_hash, tx_access_hash, type, key TEXT, block_dist INTEGER
-FROM collisions
-"""
-        cursor.execute(sql)
-        results: Sequence[tuple[str, str, str, str, int]] = cursor.fetchall()
-        result_dicts = [
-            {
-                "tx_write": tx_a,
-                "tx_access": tx_b,
-                "type": type,
-                "key": key,
-                "block_dist": block_dist,
-            }
-            for tx_a, tx_b, type, key, block_dist in results
-        ]
-        return result_dicts
-
     def get_candidates(self) -> Sequence[tuple[str, str]]:
         with self._con.cursor() as cursor:
             return cursor.execute(
@@ -313,9 +307,6 @@ FROM collisions
         sql = """
 SELECT type, COUNT(*)
 FROM collisions
-INNER JOIN candidates
-ON collisions.tx_write_hash = candidates.tx_write_hash
-AND collisions.tx_access_hash = candidates.tx_access_hash
 GROUP BY type
 """
         return dict(self._con.cursor().execute(sql).fetchall())
@@ -325,9 +316,6 @@ GROUP BY type
         sql = """
 SELECT SUBSTR(key, 1, 42) as addr, COUNT(*) as n
 FROM collisions
-INNER JOIN candidates
-ON collisions.tx_write_hash = candidates.tx_write_hash
-AND collisions.tx_access_hash = candidates.tx_access_hash
 GROUP BY SUBSTR(key, 1, 42)
 ORDER BY n DESC, addr ASC
 LIMIT 10
@@ -339,9 +327,6 @@ LIMIT 10
         sql = """
 SELECT COUNT(DISTINCT SUBSTR(key, 1, 42))
 FROM collisions
-INNER JOIN candidates
-ON collisions.tx_write_hash = candidates.tx_write_hash
-AND collisions.tx_access_hash = candidates.tx_access_hash
 """
         return cursor.execute(sql).fetchall()[0][0]
 

@@ -47,7 +47,7 @@ WHERE a.sender = b.sender
     with db._con.cursor() as cursor:
         cursor.execute(sql)
         deleted = cursor.rowcount
-    db._con.commit()
+    db.remove_collisions_without_candidate()
     return deleted
 
 
@@ -64,7 +64,7 @@ WHERE NOT EXISTS (
     with db._con.cursor() as cursor:
         cursor.execute(sql)
         deleted = cursor.rowcount
-    db._con.commit()
+    db.remove_collisions_without_candidate()
     return deleted
 
 
@@ -83,7 +83,7 @@ WHERE d.tx_write_hash = a.tx_write_hash AND d.tx_access_hash = b.tx_access_hash
 """
         cursor.execute(sql)
         deleted = cursor.rowcount
-    db._con.commit()
+    db.remove_collisions_without_candidate()
     return deleted
 
 
@@ -121,4 +121,5 @@ WHERE tx_write_hash = tx_a AND tx_access_hash = tx_b""").format(10000)
             finished = cursor.rowcount == 0
             deleted += cursor.rowcount
         db._con.commit()
+    db.remove_collisions_without_candidate()
     return deleted
