@@ -2,6 +2,7 @@ from typing import Sequence
 from tod_attack_miner.db.db import DB
 from tod_attack_miner.db.filters import (
     filter_EOA_nonce_collisions,
+    filter_block_window,
     filter_indirect_dependencies_recursive,
     filter_indirect_dependencies_quick,
     filter_same_sender,
@@ -27,8 +28,11 @@ class Miner:
         self.db.insert_candidates()
         self._original_conflicts = self.db.get_conflicts_stats()
 
-    def filter_candidates(self) -> None:
+    def filter_candidates(self, window_size: int | None) -> None:
         self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
+        self._filter_stats["filtered"]["block_window"] = filter_block_window(
+            self.db, window_size
+        )
         self._filter_stats["filtered"]["block_producers"] = filter_block_producers(
             self.db
         )

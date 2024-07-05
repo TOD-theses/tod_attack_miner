@@ -14,6 +14,17 @@ WHERE key = producer AND type = 'balance'
     return db.remove_candidates_without_collision()
 
 
+def filter_block_window(db: DB, window_size: int | None) -> int:
+    if window_size is None:
+        return 0
+    sql = psycopg.sql.SQL("""
+DELETE FROM collisions c
+WHERE block_dist >= {}""").format(window_size)
+    with db._con.cursor() as cursor:
+        cursor.execute(sql)
+    return db.remove_candidates_without_collision()
+
+
 def filter_EOA_nonce_collisions(db: DB):
     sql = """
 DELETE FROM collisions c

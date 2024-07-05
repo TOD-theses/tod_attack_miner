@@ -20,6 +20,12 @@ def main():
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
     parser.add_argument("--from-block", default=19895500)
     parser.add_argument("--to-block", default=19895500 + 100 - 1)
+    parser.add_argument(
+        "--window-size",
+        type=int,
+        default=None,
+        help="If passed, filter TOD candidates that are {window-size} or more blocks apart",
+    )
     parser.add_argument("--postgres-user", type=str, default="postgres")
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
@@ -41,5 +47,5 @@ def main():
         else:
             miner.fetch(int(args.from_block), int(args.to_block))
             miner.find_conflicts()
-            miner.filter_candidates()
+            miner.filter_candidates(args.window_size)
             print(f"Found {miner.count_candidates()} candidates")
