@@ -1,5 +1,5 @@
 import hashlib
-from typing import Literal, Sequence, cast
+from typing import Iterable, Literal, Sequence, TypedDict, cast
 
 import psycopg
 import psycopg.sql
@@ -26,6 +26,13 @@ ACCESS_TYPE = (
     Literal["storage"] | Literal["code"] | Literal["balance"] | Literal["nonce"]
 )
 types: Sequence[ACCESS_TYPE] = ["storage", "code", "balance", "nonce"]
+
+
+class Candidate(TypedDict):
+    tx_write_hash: str
+    tx_access_hash: str
+    block_dist: int
+    types: Sequence[ACCESS_TYPE]
 
 
 class DB:
@@ -283,11 +290,26 @@ WHERE NOT EXISTS (
             )
         self._con.commit()
 
-    def get_candidates(self) -> Sequence[tuple[str, str]]:
+    def get_candidates(self) -> Sequence[Candidate]:
         with self._con.cursor() as cursor:
-            return cursor.execute(
-                "SELECT tx_write_hash, tx_access_hash FROM candidates"
-            ).fetchall()
+            sql = """
+SELECT candidates.tx_write_hash, candidates.tx_access_hash, block_dist, string_agg(DISTINCT type, '|')
+FROM candidates
+INNER JOIN collisions
+ON candidates.tx_write_hash = collisions.tx_write_hash AND candidates.tx_access_hash = collisions.tx_access_hash 
+GROUP BY candidates.tx_write_hash, candidates.tx_access_hash, block_dist
+"""
+            candidates: Iterable[tuple[str, str, int, str]] = cursor.execute(sql)
+
+            return [
+                {
+                    "tx_write_hash": tx_a,
+                    "tx_access_hash": tx_b,
+                    "block_dist": block_dist,
+                    "types": cast(Sequence[ACCESS_TYPE], types.split("|")),
+                }
+                for tx_a, tx_b, block_dist, types in candidates
+            ]
 
     def get_accesses_stats(self):
         return dict(

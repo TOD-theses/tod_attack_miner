@@ -1,5 +1,5 @@
 from typing import Sequence
-from tod_attack_miner.db.db import DB
+from tod_attack_miner.db.db import DB, Candidate
 from tod_attack_miner.db.filters import (
     filter_EOA_nonce_collisions,
     filter_block_window,
@@ -54,7 +54,7 @@ class Miner:
     def count_candidates(self) -> int:
         return self.db.count_candidates()
 
-    def get_candidates(self) -> Sequence[tuple[str, str]]:
+    def get_candidates(self) -> Sequence[Candidate]:
         return self.db.get_candidates()
 
     def get_stats(self):
