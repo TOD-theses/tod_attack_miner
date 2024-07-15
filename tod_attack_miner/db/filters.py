@@ -38,34 +38,30 @@ WHERE key = sender AND type = 'nonce'
 
 def filter_same_sender(db: DB):
     sql = """
-DELETE FROM candidates
+DELETE FROM collisions
 USING transactions a, transactions b
 WHERE a.sender = b.sender
-    AND candidates.tx_access_hash = a.hash
-    AND candidates.tx_write_hash = b.hash
+    AND collisions.tx_access_hash = a.hash
+    AND collisions.tx_write_hash = b.hash
 """
     with db._con.cursor() as cursor:
         cursor.execute(sql)
-        deleted = cursor.rowcount
-    db.remove_collisions_without_candidate()
-    return deleted
+    return db.remove_candidates_without_collision()
 
 
 def filter_second_tx_ether_transfer(db: DB):
     sql = """
-DELETE FROM candidates
+DELETE FROM collisions
 WHERE NOT EXISTS (
     SELECT 1
     FROM accesses
-    WHERE candidates.tx_access_hash = accesses.tx_hash
+    WHERE collisions.tx_access_hash = accesses.tx_hash
       AND accesses.type = 'code'
 )
 """
     with db._con.cursor() as cursor:
         cursor.execute(sql)
-        deleted = cursor.rowcount
-    db.remove_collisions_without_candidate()
-    return deleted
+    return db.remove_candidates_without_collision()
 
 
 def filter_indirect_dependencies_quick(db: DB):
