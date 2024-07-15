@@ -1,7 +1,8 @@
 from typing import Sequence
 from tod_attack_miner.db.db import DB, Candidate
 from tod_attack_miner.db.filters import (
-    filter_EOA_nonce_collisions,
+    filter_codes,
+    filter_nonces,
     filter_block_window,
     filter_indirect_dependencies_recursive,
     filter_indirect_dependencies_quick,
@@ -36,9 +37,8 @@ class Miner:
         self._filter_stats["filtered"]["block_producers"] = filter_block_producers(
             self.db
         )
-        self._filter_stats["filtered"]["eoa_nonces"] = filter_EOA_nonce_collisions(
-            self.db
-        )
+        self._filter_stats["filtered"]["nonces"] = filter_nonces(self.db)
+        self._filter_stats["filtered"]["codes"] = filter_codes(self.db)
         self._filter_stats["filtered"]["indirect_dependencies_quick"] = (
             filter_indirect_dependencies_quick(self.db)
         )

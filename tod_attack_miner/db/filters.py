@@ -25,14 +25,15 @@ WHERE block_dist >= {}""").format(window_size)
     return db.remove_candidates_without_collision()
 
 
-def filter_EOA_nonce_collisions(db: DB):
-    sql = """
-DELETE FROM collisions c
-USING transactions
-WHERE key = sender AND type = 'nonce'
-"""
+def filter_nonces(db: DB):
     with db._con.cursor() as cursor:
-        cursor.execute(sql)
+        cursor.execute("DELETE FROM collisions WHERE type = 'nonce'")
+    return db.remove_candidates_without_collision()
+
+
+def filter_codes(db: DB):
+    with db._con.cursor() as cursor:
+        cursor.execute("DELETE FROM collisions WHERE type = 'code'")
     return db.remove_candidates_without_collision()
 
 

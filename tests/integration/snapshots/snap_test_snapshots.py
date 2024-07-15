@@ -41,9 +41,10 @@ snapshots["test_tod_attack_miner_e2e stats"] = {
         "filtered": {
             "block_producers": 786,
             "block_window": 62,
-            "eoa_nonces": 658,
+            "codes": 0,
             "indirect_dependencies_quick": 47,
             "indirect_dependencies_recursive": 38,
+            "nonces": 658,
             "recipient_eth_transfer": 61,
             "same_sender": 174,
         },
