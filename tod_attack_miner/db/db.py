@@ -289,9 +289,21 @@ WHERE NOT EXISTS (
     """
             return cursor.execute(sql).fetchall()[0][0]
 
+    def count_transactions(self) -> int:
+        with self._con.cursor() as cursor:
+            return cursor.execute("SELECT COUNT(*) FROM transactions").fetchall()[0][0]
+
     def count_candidates(self) -> int:
         with self._con.cursor() as cursor:
             return cursor.execute("SELECT COUNT(*) FROM candidates").fetchall()[0][0]
+
+    def count_unique_candidate_transactions(self) -> int:
+        sql = """
+SELECT COUNT(DISTINCT hash)
+FROM transactions
+INNER JOIN candidates ON tx_write_hash = hash OR tx_access_hash = hash"""
+        with self._con.cursor() as cursor:
+            return cursor.execute(sql).fetchall()[0][0]
 
     def insert_block(self, block: BlockWithTransactions):
         tx_values = [

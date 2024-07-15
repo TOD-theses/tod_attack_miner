@@ -48,7 +48,9 @@ snapshots["test_tod_attack_miner_e2e stats"] = {
             "same_sender": 174,
         },
     },
+    "candidates_unique_transactions": 399,
     "collisions": {"balance": 229, "storage": 385},
     "collisions_before_filters": {"balance": 1526, "nonce": 879, "storage": 710},
     "state_diffs": {"balance": 2577, "code": 3, "nonce": 880, "storage": 2594},
+    "transactions": 1002,
 }

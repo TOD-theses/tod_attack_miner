@@ -68,6 +68,8 @@ class Miner:
             "collisions_before_filters": self._original_collisions,
             "candidates_filters": self._filter_stats,
             "candidates": self.db.count_candidates(),
+            "candidates_unique_transactions": self.db.count_unique_candidate_transactions(),
+            "transactions": self.db.count_transactions(),
             "addresses_est": self.db.get_unique_addresses_stats(),
             "addresses_est_total": self.db.get_unique_addresses_total(),
         }
