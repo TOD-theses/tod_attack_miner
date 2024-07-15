@@ -68,8 +68,15 @@ class Miner:
             "collisions_before_filters": self._original_collisions,
             "candidates_filters": self._filter_stats,
             "candidates": self.db.count_candidates(),
-            "candidates_unique_transactions": self.db.count_unique_candidate_transactions(),
+            "candidates_transactions_unique": self.db.count_unique_candidate_transactions(),
             "transactions": self.db.count_transactions(),
-            "addresses_est": self.db.get_unique_addresses_stats(),
-            "addresses_est_total": self.db.get_unique_addresses_total(),
+            "collision_addresses_unique": self.db.count_unique_collision_addresses(),
+            "samples": {
+                "candidates_transactions_frequent": self.db.most_frequent_candidate_transactions(),
+                "collision_addresses_frequent": self.db.most_frequent_collisions_addresses(),
+            },
+            "frequencies": {
+                "candidates_transactions": self.db.transactions_candidate_frequency(),
+                "collisions_addresses": self.db.collisions_addresses_frequency(),
+            },
         }

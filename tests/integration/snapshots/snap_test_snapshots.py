@@ -18,19 +18,6 @@ snapshots["test_tod_attack_miner_e2e num_candidates"] = 369
 
 snapshots["test_tod_attack_miner_e2e stats"] = {
     "accesses": {"balance": 4663, "code": 2248, "nonce": 4332, "storage": 8239},
-    "addresses_est": [
-        ("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", 184),
-        ("0xdac17f958d2ee523a2206206994597c13d831ec7", 90),
-        ("0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49", 30),
-        ("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 27),
-        ("0x8390a1da07e376ef7add4be859ba74fb83aa02d5", 18),
-        ("0x0d7e906bd9cafa154b048cfa766cc1e54e39af9b", 16),
-        ("0x0ec68c5b10f21effb74f2a5c61dfe6b08c0db6cb", 16),
-        ("0x6774bcbd5cecef1336b5300fb5186a12ddd8b367", 16),
-        ("0x8fa3b4570b4c96f8036c13b64971ba65867eeb48", 16),
-        ("0x98078db053902644191f93988341e31289e1c8fe", 16),
-    ],
-    "addresses_est_total": 75,
     "candidates": 369,
     "candidates_filters": {
         "candidates": {
@@ -49,9 +36,47 @@ snapshots["test_tod_attack_miner_e2e stats"] = {
             "same_sender": 174,
         },
     },
-    "candidates_unique_transactions": 399,
+    "candidates_transactions_unique": 399,
+    "collision_addresses_unique": 75,
     "collisions": {"balance": 229, "storage": 385},
     "collisions_before_filters": {"balance": 1526, "nonce": 879, "storage": 710},
+    "frequencies": {
+        "candidates_transactions": [(5, 2), (4, 5), (3, 30), (2, 256), (1, 106)],
+        "collisions_addresses": [
+            (184, 1),
+            (90, 1),
+            (30, 1),
+            (27, 1),
+            (18, 1),
+            (16, 5),
+            (14, 1),
+            (12, 1),
+            (11, 1),
+            (9, 1),
+            (6, 2),
+            (5, 5),
+            (4, 6),
+            (3, 5),
+            (2, 20),
+            (1, 23),
+        ],
+    },
+    "samples": {
+        "candidates_transactions_frequent": [
+            ("0xe91cfe5d2cd6d2f4fc353ed11b595f2ec2f32d01933dbdccc2f2bf0616bfdcbc", 5),
+            ("0x6e97688f22ccd10ca137f292f806632fe08abb0dff3743f769ba517e6255ffc7", 5),
+            ("0x6a6441644f1511f988446bd3bc0950677594b6830189fe4bb8e57c0eb90c45f7", 4),
+            ("0x618f4b0392ac8ee3cb3c447c6dbe1ec4b472e8e49d302a393fd23e6d36164ec6", 4),
+            ("0x1574e1c50915720812699177d7adbfc4ceb0aacf22dd0f259496ad6a8563d2cb", 4),
+        ],
+        "collision_addresses_frequent": [
+            ("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", 184),
+            ("0xdac17f958d2ee523a2206206994597c13d831ec7", 90),
+            ("0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49", 30),
+            ("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 27),
+            ("0x8390a1da07e376ef7add4be859ba74fb83aa02d5", 18),
+        ],
+    },
     "state_diffs": {"balance": 2577, "code": 3, "nonce": 880, "storage": 2594},
     "transactions": 1002,
 }

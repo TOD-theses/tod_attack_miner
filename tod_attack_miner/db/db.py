@@ -305,6 +305,32 @@ INNER JOIN candidates ON tx_write_hash = hash OR tx_access_hash = hash"""
         with self._con.cursor() as cursor:
             return cursor.execute(sql).fetchall()[0][0]
 
+    def most_frequent_candidate_transactions(self) -> Sequence[tuple[str, int]]:
+        sql = """
+SELECT hash, COUNT(*) as n
+FROM transactions
+INNER JOIN candidates ON tx_write_hash = hash OR tx_access_hash = hash
+GROUP BY hash
+ORDER BY n DESC
+LIMIT 5"""
+        with self._con.cursor() as cursor:
+            return cursor.execute(sql).fetchall()
+
+    def transactions_candidate_frequency(self) -> Sequence[tuple[int, int]]:
+        sql = """
+SELECT n, COUNT(*)
+FROM (
+    SELECT COUNT(*) as n
+    FROM transactions
+    INNER JOIN candidates ON tx_write_hash = hash OR tx_access_hash = hash
+    GROUP BY hash
+) x
+GROUP BY n
+ORDER BY n DESC
+"""
+        with self._con.cursor() as cursor:
+            return cursor.execute(sql).fetchall()
+
     def insert_block(self, block: BlockWithTransactions):
         tx_values = [
             (
@@ -370,18 +396,32 @@ GROUP BY type
 """
         return dict(self._con.cursor().execute(sql).fetchall())
 
-    def get_unique_addresses_stats(self):
+    def most_frequent_collisions_addresses(self):
         cursor = self._con.cursor()
         sql = """
 SELECT SUBSTR(key, 1, 42) as addr, COUNT(*) as n
 FROM collisions
 GROUP BY SUBSTR(key, 1, 42)
 ORDER BY n DESC, addr ASC
-LIMIT 10
+LIMIT 5
 """
         return cursor.execute(sql).fetchall()
 
-    def get_unique_addresses_total(self):
+    def collisions_addresses_frequency(self) -> Sequence[tuple[int, int]]:
+        sql = """
+SELECT n, COUNT(*)
+FROM (
+    SELECT SUBSTR(key, 1, 42) as addr, COUNT(*) as n
+    FROM collisions
+    GROUP BY SUBSTR(key, 1, 42)
+) x
+GROUP BY n
+ORDER BY n DESC
+"""
+        with self._con.cursor() as cursor:
+            return cursor.execute(sql).fetchall()
+
+    def count_unique_collision_addresses(self):
         cursor = self._con.cursor()
         sql = """
 SELECT COUNT(DISTINCT SUBSTR(key, 1, 42))
