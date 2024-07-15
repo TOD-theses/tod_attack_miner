@@ -13,10 +13,6 @@ Staged filtering:
 
 The filter implementations can be the same for both modes, only the execution differs. The run mode will be more performant. The stats mode could be nice for analysis and statistics in the paper.
 
-Check if write-write TODs are also found (ie if prestate includes everything that is in state_diff.pre).
-
-Check if/how to exclude builders (most frequent conflicts currently): eg 0x95222290dd7278aa3ddd389cc1e1d165cc4ba.
-
 ## Install
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation instructions.

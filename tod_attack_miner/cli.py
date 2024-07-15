@@ -46,6 +46,6 @@ def main():
             print(json.dumps(miner.get_stats()))
         else:
             miner.fetch(int(args.from_block), int(args.to_block))
-            miner.find_conflicts()
+            miner.find_collisions()
             miner.filter_candidates(args.window_size)
             print(f"Found {miner.count_candidates()} candidates")

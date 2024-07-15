@@ -14,13 +14,13 @@ snapshots["test_tod_attack_miner_e2e first_candidate"] = {
     "types": ["balance"],
 }
 
-snapshots["test_tod_attack_miner_e2e num_candidates"] = 368
+snapshots["test_tod_attack_miner_e2e num_candidates"] = 369
 
 snapshots["test_tod_attack_miner_e2e stats"] = {
     "accesses": {"balance": 4663, "code": 2248, "nonce": 4332, "storage": 8239},
     "addresses_est": [
         ("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2", 184),
-        ("0xdac17f958d2ee523a2206206994597c13d831ec7", 89),
+        ("0xdac17f958d2ee523a2206206994597c13d831ec7", 90),
         ("0x3328f7f4a1d1c57c35df56bbf0c9dcafca309c49", 30),
         ("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", 27),
         ("0x8390a1da07e376ef7add4be859ba74fb83aa02d5", 18),
@@ -31,24 +31,24 @@ snapshots["test_tod_attack_miner_e2e stats"] = {
         ("0x98078db053902644191f93988341e31289e1c8fe", 16),
     ],
     "addresses_est_total": 75,
-    "candidates": 368,
+    "candidates": 369,
     "candidates_filters": {
         "candidates": {
-            "before_filters": 2193,
-            "final": 368,
+            "before_filters": 2195,
+            "final": 369,
             "original_without_same_value": 264234,
         },
         "filtered": {
             "block_producers": 786,
             "block_window": 62,
             "eoa_nonces": 658,
-            "indirect_dependencies_quick": 45,
-            "indirect_dependencies_recursive": 39,
+            "indirect_dependencies_quick": 47,
+            "indirect_dependencies_recursive": 38,
             "recipient_eth_transfer": 61,
             "same_sender": 174,
         },
     },
-    "conflicts": {"balance": 229, "storage": 384},
-    "conflicts_before_filters": {"balance": 1526, "nonce": 879, "storage": 708},
+    "collisions": {"balance": 229, "storage": 385},
+    "collisions_before_filters": {"balance": 1526, "nonce": 879, "storage": 710},
     "state_diffs": {"balance": 2577, "code": 3, "nonce": 880, "storage": 2594},
 }

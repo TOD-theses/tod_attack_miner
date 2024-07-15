@@ -10,10 +10,9 @@ _TABLES = {
     "transactions": "(hash TEXT PRIMARY KEY, block_number INTEGER, tx_index INTEGER, sender TEXT)",
     "accesses": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, value TEXT)",
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
-    "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER)",
+    "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER, PRIMARY KEY(tx_write_hash, tx_access_hash, type, key))",
     "candidates": "(tx_write_hash TEXT, tx_access_hash TEXT, PRIMARY KEY(tx_write_hash, tx_access_hash))",
 }
-# TODO: check if indexes are worth it
 _INDEXES = {
     "accesses_type_key": "accesses(type, key, value)",
     "accesses_tx_hash": "accesses(tx_hash)",
@@ -192,7 +191,11 @@ class DB:
             )
         self._con.commit()
 
-    def insert_conflicts(self):
+    def insert_collisions(self):
+        self.insert_read_write_collisions()
+        self.insert_write_write_collisions()
+
+    def insert_read_write_collisions(self):
         with self._con.cursor() as cursor:
             sql = """
     INSERT INTO collisions
@@ -208,6 +211,28 @@ class DB:
                 AND accesses.tx_index > state_diffs.tx_index)
         )
     GROUP BY accesses.tx_hash, state_diffs.tx_hash, accesses.type, accesses.key, accesses.block_number - state_diffs.block_number
+    ON CONFLICT DO NOTHING
+    """
+            cursor.execute(sql)
+        self._con.commit()
+
+    def insert_write_write_collisions(self):
+        with self._con.cursor() as cursor:
+            sql = """
+    INSERT INTO collisions
+    SELECT b.tx_hash, a.tx_hash, a.type, a.key, a.block_number - b.block_number
+    FROM state_diffs a
+    INNER JOIN state_diffs b
+    ON a.type = b.type
+        AND a.key = b.key
+        AND a.pre_value = b.post_value
+        AND (
+            a.block_number - b.block_number > 0
+            OR (a.block_number = b.block_number
+                AND a.tx_index > b.tx_index)
+        )
+    GROUP BY a.tx_hash, b.tx_hash, a.type, a.key, a.block_number - b.block_number
+    ON CONFLICT DO NOTHING
     """
             cursor.execute(sql)
         self._con.commit()
@@ -325,7 +350,7 @@ GROUP BY candidates.tx_write_hash, candidates.tx_access_hash, block_dist
             .fetchall()
         )
 
-    def get_conflicts_stats(self):
+    def get_collisions_stats(self):
         sql = """
 SELECT type, COUNT(*)
 FROM collisions

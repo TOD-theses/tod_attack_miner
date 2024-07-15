@@ -21,7 +21,7 @@ def test_tod_attack_miner_e2e(postgresql: Connection, snapshot: PyTestSnapshotTe
     miner = Miner(RPC(test_provider_url), DB(postgresql))
 
     miner.fetch(block_range.start, block_range.end)
-    miner.find_conflicts()
+    miner.find_collisions()
     miner.filter_candidates(window_size=3)
 
     candidates = miner.get_candidates()

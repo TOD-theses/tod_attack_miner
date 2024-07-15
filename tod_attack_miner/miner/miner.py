@@ -18,15 +18,15 @@ class Miner:
         self.rpc = rpc
         self.db = db
         self._filter_stats = {"candidates": {}, "filtered": {}}
-        self._original_conflicts = {}
+        self._original_collisions = {}
 
     def fetch(self, start: int, end: int) -> None:
         fetch_block_range(self.rpc, self.db, BlockRange(start, end))
 
-    def find_conflicts(self) -> None:
-        self.db.insert_conflicts()
+    def find_collisions(self) -> None:
+        self.db.insert_collisions()
         self.db.insert_candidates()
-        self._original_conflicts = self.db.get_conflicts_stats()
+        self._original_collisions = self.db.get_collisions_stats()
 
     def filter_candidates(self, window_size: int | None) -> None:
         self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
@@ -64,8 +64,8 @@ class Miner:
         return {
             "accesses": self.db.get_accesses_stats(),
             "state_diffs": self.db.get_state_diffs_stats(),
-            "conflicts": self.db.get_conflicts_stats(),
-            "conflicts_before_filters": self._original_conflicts,
+            "collisions": self.db.get_collisions_stats(),
+            "collisions_before_filters": self._original_collisions,
             "candidates_filters": self._filter_stats,
             "candidates": self.db.count_candidates(),
             "addresses_est": self.db.get_unique_addresses_stats(),
