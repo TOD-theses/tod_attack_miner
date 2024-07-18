@@ -120,3 +120,22 @@ WHERE tx_write_hash = tx_a AND tx_access_hash = tx_b""").format(10000)
         db._con.commit()
     db.remove_collisions_without_candidate()
     return deleted
+
+
+def limit_collisions_per_address(db: DB, limit=10):
+    sql = f"""
+DELETE FROM collisions c
+USING (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY SUBSTR(key, 1, 42) ORDER BY RANDOM()) AS n
+    FROM collisions
+) grouped
+WHERE c.tx_write_hash = grouped.tx_write_hash
+  AND c.tx_access_hash = grouped.tx_access_hash
+  AND c.type = grouped.type
+  AND c.key = grouped.key
+  AND n > {limit}
+"""
+    with db._con.cursor() as cursor:
+        cursor.execute("SELECT setseed(0)")
+        cursor.execute(sql)  # type: ignore
+    return db.remove_candidates_without_collision()

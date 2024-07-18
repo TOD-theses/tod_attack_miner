@@ -49,3 +49,4 @@ def main():
             miner.find_collisions()
             miner.filter_candidates(args.window_size)
             print(f"Found {miner.count_candidates()} candidates")
+            print(json.dumps(miner.get_stats()))

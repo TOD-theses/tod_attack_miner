@@ -9,6 +9,7 @@ from tod_attack_miner.db.filters import (
     filter_same_sender,
     filter_second_tx_ether_transfer,
     filter_block_producers,
+    limit_collisions_per_address,
 )
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
@@ -48,6 +49,9 @@ class Miner:
         self._filter_stats["filtered"]["same_sender"] = filter_same_sender(self.db)
         self._filter_stats["filtered"]["recipient_eth_transfer"] = (
             filter_second_tx_ether_transfer(self.db)
+        )
+        self._filter_stats["filtered"]["limited_collisions_per_address"] = (
+            limit_collisions_per_address(self.db)
         )
         self._filter_stats["candidates"]["final"] = self.db.count_candidates()
 
