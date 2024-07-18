@@ -22,6 +22,7 @@ def test_tod_attack_miner_e2e(postgresql: Connection, snapshot: PyTestSnapshotTe
 
     miner.fetch(block_range.start, block_range.end)
     miner.find_collisions()
+    miner.compute_skelcodes()
     miner.filter_candidates(window_size=3)
 
     candidates = miner.get_candidates()

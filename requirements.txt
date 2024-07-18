@@ -1,5 +1,6 @@
-psycopg[binary]
+psycopg[binary]==3.2.1
 tqdm==4.66.1
 typing_extensions==4.10.0
 requests==2.31.0
-web3
+web3==6.19.0
+cbor2==5.6.4

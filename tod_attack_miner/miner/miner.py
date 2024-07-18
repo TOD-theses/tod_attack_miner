@@ -10,6 +10,8 @@ from tod_attack_miner.db.filters import (
     filter_second_tx_ether_transfer,
     filter_block_producers,
     limit_collisions_per_address,
+    limit_collisions_per_code_family,
+    limit_collisions_per_code_hash,
 )
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
@@ -24,6 +26,9 @@ class Miner:
 
     def fetch(self, start: int, end: int) -> None:
         fetch_block_range(self.rpc, self.db, BlockRange(start, end))
+
+    def compute_skelcodes(self) -> None:
+        self.db.insert_skeletons()
 
     def find_collisions(self) -> None:
         self.db.insert_collisions()
@@ -52,6 +57,12 @@ class Miner:
         )
         self._filter_stats["filtered"]["limited_collisions_per_address"] = (
             limit_collisions_per_address(self.db)
+        )
+        self._filter_stats["filtered"]["limited_collisions_per_code_hash"] = (
+            limit_collisions_per_code_hash(self.db)
+        )
+        self._filter_stats["filtered"]["limited_collisions_per_code_family"] = (
+            limit_collisions_per_code_family(self.db)
         )
         self._filter_stats["candidates"]["final"] = self.db.count_candidates()
 

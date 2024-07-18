@@ -139,3 +139,43 @@ WHERE c.tx_write_hash = grouped.tx_write_hash
         cursor.execute("SELECT setseed(0)")
         cursor.execute(sql)  # type: ignore
     return db.remove_candidates_without_collision()
+
+
+def limit_collisions_per_code_hash(db: DB, limit=10):
+    sql = f"""
+DELETE FROM collisions c
+USING (
+    SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY hash ORDER BY RANDOM()) AS n
+    FROM collisions
+    INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
+) grouped
+WHERE c.tx_write_hash = grouped.tx_write_hash
+  AND c.tx_access_hash = grouped.tx_access_hash
+  AND c.type = grouped.type
+  AND c.key = grouped.key
+  AND n > {limit}
+"""
+    with db._con.cursor() as cursor:
+        cursor.execute("SELECT setseed(0)")
+        cursor.execute(sql)  # type: ignore
+    return db.remove_candidates_without_collision()
+
+
+def limit_collisions_per_code_family(db: DB, limit=10):
+    sql = f"""
+DELETE FROM collisions c
+USING (
+    SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY family ORDER BY RANDOM()) AS n
+    FROM collisions
+    INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
+) grouped
+WHERE c.tx_write_hash = grouped.tx_write_hash
+  AND c.tx_access_hash = grouped.tx_access_hash
+  AND c.type = grouped.type
+  AND c.key = grouped.key
+  AND n > {limit}
+"""
+    with db._con.cursor() as cursor:
+        cursor.execute("SELECT setseed(0)")
+        cursor.execute(sql)  # type: ignore
+    return db.remove_candidates_without_collision()

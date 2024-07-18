@@ -3,6 +3,7 @@ from typing import Iterable, Literal, Sequence, TypedDict, cast
 
 import psycopg
 import psycopg.sql
+from tod_attack_miner.ethutils.skeleton import skeletize
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
 _TABLES = {
@@ -12,6 +13,8 @@ _TABLES = {
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
     "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER, PRIMARY KEY(tx_write_hash, tx_access_hash, type, key))",
     "candidates": "(tx_write_hash TEXT, tx_access_hash TEXT, PRIMARY KEY(tx_write_hash, tx_access_hash))",
+    "codes": "(addr TEXT, code TEXT, hash TEXT, PRIMARY KEY(addr))",
+    "skeletons": "(addr TEXT, family TEXT, hash TEXT, PRIMARY KEY(addr))",
 }
 _INDEXES = {
     "accesses_type_key": "accesses(type, key, value)",
@@ -60,6 +63,8 @@ class DB:
     def insert_prestate(self, block_number: int, tx_index: int, prestate: TxPrestate):
         with self._con.cursor() as cursor:
             accesses: list[tuple[int, int, str, ACCESS_TYPE, str, str]] = []
+            codes: list[tuple[str, str, str]] = []
+
             for addr, state in prestate["result"].items():
                 if (balance := state.get("balance")) is not None:
                     accesses.append(
@@ -83,6 +88,7 @@ class DB:
                             hash_code(code),
                         )
                     )
+                    codes.append((addr.lower(), code, hash_code(code)))
                 if (nonce := state.get("nonce")) is not None:
                     accesses.append(
                         (
@@ -110,6 +116,10 @@ class DB:
                 "INSERT INTO accesses VALUES (%s, %s, %s, %s, %s, %s)",
                 accesses,
             )
+            cursor.executemany(
+                "INSERT INTO codes VALUES (%s, %s, %s) ON CONFLICT (addr) DO UPDATE SET code=EXCLUDED.code, hash=EXCLUDED.hash",
+                codes,
+            )
         self._con.commit()
 
     def insert_state_diff(
@@ -118,6 +128,7 @@ class DB:
         pre, post = state_diff["result"]["pre"], state_diff["result"]["post"]
         with self._con.cursor() as cursor:
             state_diffs: list[tuple[int, int, str, ACCESS_TYPE, str, str, str]] = []
+            codes: list[tuple[str, str, str]] = []
 
             for addr, prestate in pre.items():
                 poststate = post[addr]
@@ -153,6 +164,8 @@ class DB:
                             hash_code(post_code),
                         )
                     )
+                    # we use the post_code, since pre_code must always be empty
+                    codes.append((addr.lower(), post_code, hash_code(post_code)))
                 if (pre_nonce := prestate.get("nonce")) is not None:
                     assert "nonce" in poststate
                     post_nonce = poststate["nonce"]
@@ -189,7 +202,27 @@ class DB:
                 "INSERT INTO state_diffs VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 state_diffs,
             )
+
+            cursor.executemany(
+                "INSERT INTO codes VALUES (%s, %s, %s) ON CONFLICT (addr) DO UPDATE SET code=EXCLUDED.code, hash=EXCLUDED.hash",
+                codes,
+            )
         self._con.commit()
+
+    def insert_skeletons(self):
+        codes = self.get_codes()
+        mapped_codes = [(addr, code_skeleton_hash(c), hash) for addr, c, hash in codes]
+        self._insert_code_skeletons(mapped_codes)
+
+    def get_codes(self) -> Sequence[tuple[str, str, str]]:
+        with self._con.cursor() as cursor:
+            return cursor.execute("SELECT addr, code, hash FROM codes").fetchall()
+
+    def _insert_code_skeletons(self, mapped_codes: Iterable[tuple[str, str, str]]):
+        with self._con.cursor() as cursor:
+            cursor.executemany(
+                "INSERT INTO skeletons VALUES (%s, %s, %s)", mapped_codes
+            )
 
     def insert_collisions(self):
         self.insert_read_write_collisions()
@@ -433,3 +466,9 @@ FROM collisions
 def hash_code(code: str) -> str:
     """Some hash of the code, not the EVM hash"""
     return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+def code_skeleton_hash(code: str) -> str:
+    code_without_prefix = code[2:]
+    skelcode = skeletize(bytes.fromhex(code_without_prefix)).hex()
+    return hash_code(skelcode)
