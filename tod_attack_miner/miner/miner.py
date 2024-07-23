@@ -1,18 +1,5 @@
-from typing import Sequence
+from typing import Callable, Sequence
 from tod_attack_miner.db.db import DB, Candidate
-from tod_attack_miner.db.filters import (
-    filter_codes,
-    filter_nonces,
-    filter_block_window,
-    filter_indirect_dependencies_recursive,
-    filter_indirect_dependencies_quick,
-    filter_same_sender,
-    filter_second_tx_ether_transfer,
-    filter_block_producers,
-    limit_collisions_per_address,
-    limit_collisions_per_code_family,
-    limit_collisions_per_code_hash,
-)
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
 
@@ -35,35 +22,12 @@ class Miner:
         self.db.insert_candidates()
         self._original_collisions = self.db.get_collisions_stats()
 
-    def filter_candidates(self, window_size: int | None) -> None:
+    def filter_candidates(
+        self, filters: Sequence[tuple[str, Callable[[DB], int]]]
+    ) -> None:
         self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
-        self._filter_stats["filtered"]["block_window"] = filter_block_window(
-            self.db, window_size
-        )
-        self._filter_stats["filtered"]["block_producers"] = filter_block_producers(
-            self.db
-        )
-        self._filter_stats["filtered"]["nonces"] = filter_nonces(self.db)
-        self._filter_stats["filtered"]["codes"] = filter_codes(self.db)
-        self._filter_stats["filtered"]["indirect_dependencies_quick"] = (
-            filter_indirect_dependencies_quick(self.db)
-        )
-        self._filter_stats["filtered"]["indirect_dependencies_recursive"] = (
-            filter_indirect_dependencies_recursive(self.db)
-        )
-        self._filter_stats["filtered"]["same_sender"] = filter_same_sender(self.db)
-        self._filter_stats["filtered"]["recipient_eth_transfer"] = (
-            filter_second_tx_ether_transfer(self.db)
-        )
-        self._filter_stats["filtered"]["limited_collisions_per_address"] = (
-            limit_collisions_per_address(self.db)
-        )
-        self._filter_stats["filtered"]["limited_collisions_per_code_hash"] = (
-            limit_collisions_per_code_hash(self.db)
-        )
-        self._filter_stats["filtered"]["limited_collisions_per_code_family"] = (
-            limit_collisions_per_code_family(self.db)
-        )
+        for name, filter in filters:
+            self._filter_stats["filtered"][name] = filter(self.db)
         self._filter_stats["candidates"]["final"] = self.db.count_candidates()
 
     def count_candidates(self) -> int:

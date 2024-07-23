@@ -1,3 +1,4 @@
+from typing import Callable
 import psycopg
 import psycopg.sql
 from tod_attack_miner.db.db import DB
@@ -14,15 +15,18 @@ WHERE key = producer AND type = 'balance'
     return db.remove_candidates_without_collision()
 
 
-def filter_block_window(db: DB, window_size: int | None) -> int:
-    if window_size is None:
-        return 0
-    sql = psycopg.sql.SQL("""
-DELETE FROM collisions c
-WHERE block_dist >= {}""").format(window_size)
-    with db._con.cursor() as cursor:
-        cursor.execute(sql)
-    return db.remove_candidates_without_collision()
+def create_block_window_filter(window_size: int | None):
+    def block_window_filter(db: DB):
+        if window_size is None:
+            return 0
+        sql = psycopg.sql.SQL("""
+    DELETE FROM collisions c
+    WHERE block_dist >= {}""").format(window_size)
+        with db._con.cursor() as cursor:
+            cursor.execute(sql)
+        return db.remove_candidates_without_collision()
+
+    return block_window_filter
 
 
 def filter_nonces(db: DB):
@@ -122,60 +126,98 @@ WHERE tx_write_hash = tx_a AND tx_access_hash = tx_b""").format(10000)
     return deleted
 
 
-def limit_collisions_per_address(db: DB, limit=10):
-    sql = f"""
-DELETE FROM collisions c
-USING (
-    SELECT *, ROW_NUMBER() OVER (PARTITION BY SUBSTR(key, 1, 42) ORDER BY RANDOM()) AS n
-    FROM collisions
-) grouped
-WHERE c.tx_write_hash = grouped.tx_write_hash
-  AND c.tx_access_hash = grouped.tx_access_hash
-  AND c.type = grouped.type
-  AND c.key = grouped.key
-  AND n > {limit}
-"""
-    with db._con.cursor() as cursor:
-        cursor.execute("SELECT setseed(0)")
-        cursor.execute(sql)  # type: ignore
-    return db.remove_candidates_without_collision()
+def create_limit_collisions_per_address(limit: int):
+    def limit_collisions_per_address(db: DB):
+        sql = f"""
+    DELETE FROM collisions c
+    USING (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY SUBSTR(key, 1, 42) ORDER BY RANDOM()) AS n
+        FROM collisions
+    ) grouped
+    WHERE c.tx_write_hash = grouped.tx_write_hash
+    AND c.tx_access_hash = grouped.tx_access_hash
+    AND c.type = grouped.type
+    AND c.key = grouped.key
+    AND n > {limit}
+    """
+        with db._con.cursor() as cursor:
+            cursor.execute("SELECT setseed(0)")
+            cursor.execute(sql)  # type: ignore
+        return db.remove_candidates_without_collision()
+
+    return limit_collisions_per_address
 
 
-def limit_collisions_per_code_hash(db: DB, limit=10):
-    sql = f"""
-DELETE FROM collisions c
-USING (
-    SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY hash ORDER BY RANDOM()) AS n
-    FROM collisions
-    INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
-) grouped
-WHERE c.tx_write_hash = grouped.tx_write_hash
-  AND c.tx_access_hash = grouped.tx_access_hash
-  AND c.type = grouped.type
-  AND c.key = grouped.key
-  AND n > {limit}
-"""
-    with db._con.cursor() as cursor:
-        cursor.execute("SELECT setseed(0)")
-        cursor.execute(sql)  # type: ignore
-    return db.remove_candidates_without_collision()
+def create_limit_collisions_per_code_hash(limit: int):
+    def limit_collisions_per_code_hash(db: DB):
+        sql = f"""
+    DELETE FROM collisions c
+    USING (
+        SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY hash ORDER BY RANDOM()) AS n
+        FROM collisions
+        INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
+    ) grouped
+    WHERE c.tx_write_hash = grouped.tx_write_hash
+    AND c.tx_access_hash = grouped.tx_access_hash
+    AND c.type = grouped.type
+    AND c.key = grouped.key
+    AND n > {limit}
+    """
+        with db._con.cursor() as cursor:
+            cursor.execute("SELECT setseed(0)")
+            cursor.execute(sql)  # type: ignore
+        return db.remove_candidates_without_collision()
+
+    return limit_collisions_per_code_hash
 
 
-def limit_collisions_per_code_family(db: DB, limit=10):
-    sql = f"""
-DELETE FROM collisions c
-USING (
-    SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY family ORDER BY RANDOM()) AS n
-    FROM collisions
-    INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
-) grouped
-WHERE c.tx_write_hash = grouped.tx_write_hash
-  AND c.tx_access_hash = grouped.tx_access_hash
-  AND c.type = grouped.type
-  AND c.key = grouped.key
-  AND n > {limit}
-"""
-    with db._con.cursor() as cursor:
-        cursor.execute("SELECT setseed(0)")
-        cursor.execute(sql)  # type: ignore
-    return db.remove_candidates_without_collision()
+def create_limit_collisions_per_code_family(limit=10):
+    def limit_collisions_per_code_family(db: DB):
+        sql = f"""
+    DELETE FROM collisions c
+    USING (
+        SELECT tx_write_hash, tx_access_hash, type, key, ROW_NUMBER() OVER (PARTITION BY family ORDER BY RANDOM()) AS n
+        FROM collisions
+        INNER JOIN skeletons ON SUBSTR(collisions.key, 1, 42) = skeletons.addr
+    ) grouped
+    WHERE c.tx_write_hash = grouped.tx_write_hash
+    AND c.tx_access_hash = grouped.tx_access_hash
+    AND c.type = grouped.type
+    AND c.key = grouped.key
+    AND n > {limit}
+    """
+        with db._con.cursor() as cursor:
+            cursor.execute("SELECT setseed(0)")
+            cursor.execute(sql)  # type: ignore
+        return db.remove_candidates_without_collision()
+
+    return limit_collisions_per_code_family
+
+
+def get_filters_except_duplicate_limits(
+    window_size: int | None,
+) -> list[tuple[str, Callable[[DB], int]]]:
+    return [
+        ("block_window", create_block_window_filter(window_size)),
+        ("block_producers", filter_block_producers),
+        ("nonces", filter_nonces),
+        ("codes", filter_codes),
+        ("indirect_dependencies_quick", filter_indirect_dependencies_quick),
+        ("indirect_dependencies_recursive", filter_indirect_dependencies_recursive),
+        ("same_sender", filter_same_sender),
+        ("recipient_eth_transfer", filter_second_tx_ether_transfer),
+    ]
+
+
+def get_filters_duplicate_limits(limit: int) -> list[tuple[str, Callable[[DB], int]]]:
+    return [
+        ("limited_collisions_per_address", create_limit_collisions_per_address(limit)),
+        (
+            "limited_collisions_per_code_hash",
+            create_limit_collisions_per_code_hash(limit),
+        ),
+        (
+            "limited_collisions_per_code_family",
+            create_limit_collisions_per_code_family(limit),
+        ),
+    ]
