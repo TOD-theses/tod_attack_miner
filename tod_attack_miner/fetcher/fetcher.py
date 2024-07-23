@@ -32,11 +32,11 @@ def fetch_block_range(rpc: RPC, db: DB, block_range: BlockRange):
         )
     ):
         bar.set_postfix_str(f"block {block_number}")
-        rpc.fetch_block_with_transactions(block_number)
+        block = rpc.fetch_block_with_transactions(block_number)
         prestates = rpc.fetch_prestates(block_number)
         state_diffs = rpc.fetch_state_diffs(block_number)
 
-        db.insert_block(rpc.fetch_block_with_transactions(block_number))
+        db.insert_block(block)
         for i, prestate in enumerate(prestates):
             db.insert_prestate(block_number, i, prestate)
         for i, state_diff in enumerate(state_diffs):

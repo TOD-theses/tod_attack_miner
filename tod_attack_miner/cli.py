@@ -7,6 +7,10 @@ import json
 import psycopg
 
 from tod_attack_miner.db.db import DB
+from tod_attack_miner.db.filters import (
+    get_filters_duplicate_limits,
+    get_filters_except_duplicate_limits,
+)
 from tod_attack_miner.miner.miner import Miner
 
 from tod_attack_miner.rpc.rpc import RPC
@@ -48,6 +52,9 @@ def main():
             miner.fetch(int(args.from_block), int(args.to_block))
             miner.compute_skelcodes()
             miner.find_collisions()
-            miner.filter_candidates(args.window_size)
+            miner.filter_candidates(
+                get_filters_except_duplicate_limits(25)
+                + get_filters_duplicate_limits(10)
+            )
             print(f"Found {miner.count_candidates()} candidates")
             print(json.dumps(miner.get_stats()))

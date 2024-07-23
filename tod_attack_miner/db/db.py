@@ -470,5 +470,7 @@ def hash_code(code: str) -> str:
 
 def code_skeleton_hash(code: str) -> str:
     code_without_prefix = code[2:]
+    if code_without_prefix == "0":
+        code_without_prefix = ""
     skelcode = skeletize(bytes.fromhex(code_without_prefix)).hex()
     return hash_code(skelcode)
