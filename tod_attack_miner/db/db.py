@@ -31,8 +31,8 @@ types: Sequence[ACCESS_TYPE] = ["storage", "code", "balance", "nonce"]
 
 
 class Candidate(TypedDict):
-    tx_write_hash: str
-    tx_access_hash: str
+    tx_a: str
+    tx_b: str
     block_dist: int
     types: Sequence[ACCESS_TYPE]
 
@@ -399,8 +399,8 @@ GROUP BY candidates.tx_write_hash, candidates.tx_access_hash, block_dist
 
             return [
                 {
-                    "tx_write_hash": tx_a,
-                    "tx_access_hash": tx_b,
+                    "tx_a": tx_a,
+                    "tx_b": tx_b,
                     "block_dist": block_dist,
                     "types": cast(Sequence[ACCESS_TYPE], types.split("|")),
                 }

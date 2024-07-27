@@ -9,8 +9,8 @@ snapshots = Snapshot()
 
 snapshots["test_tod_attack_miner_e2e first_candidate"] = {
     "block_dist": 0,
-    "tx_access_hash": "0xcfb5968f11b15c15cfb23234dc56f16c5811485a6cae702195317a2f86ce2c6c",
-    "tx_write_hash": "0x001811be6d2019216746d9c9da9f847160dc18a9d6dba362d4b265c2dd7e649a",
+    "tx_a": "0x001811be6d2019216746d9c9da9f847160dc18a9d6dba362d4b265c2dd7e649a",
+    "tx_b": "0xcfb5968f11b15c15cfb23234dc56f16c5811485a6cae702195317a2f86ce2c6c",
     "types": ["balance"],
 }
 
