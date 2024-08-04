@@ -30,6 +30,11 @@ def main():
         default=None,
         help="If passed, filter TOD candidates that are {window-size} or more blocks apart",
     )
+    parser.add_argument(
+        "--reset-db",
+        action="store_true",
+        help="Delete data from previous runs before starting to mine",
+    )
     parser.add_argument("--postgres-user", type=str, default="postgres")
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
@@ -49,6 +54,8 @@ def main():
         if args.stats_only:
             print(json.dumps(miner.get_stats()))
         else:
+            if args.reset_db:
+                miner.reset_db()
             miner.fetch(int(args.from_block), int(args.to_block))
             miner.compute_skelcodes()
             miner.find_collisions()

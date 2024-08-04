@@ -60,6 +60,25 @@ class DB:
                 )
             self._con.commit()
 
+    def reset(self):
+        with self._con.cursor() as cursor:
+            for name in _INDEXES:
+                cursor.execute(
+                    cast(
+                        psycopg.sql.SQL,
+                        f"DROP INDEX IF EXISTS {name}",
+                    )
+                )
+            for name in _TABLES:
+                cursor.execute(
+                    cast(
+                        psycopg.sql.SQL,
+                        f"DROP TABLE IF EXISTS {name}",
+                    )
+                )
+            self._con.commit()
+        self._setup_tables()
+
     def insert_prestate(self, block_number: int, tx_index: int, prestate: TxPrestate):
         with self._con.cursor() as cursor:
             accesses: list[tuple[int, int, str, ACCESS_TYPE, str, str]] = []

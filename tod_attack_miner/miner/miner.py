@@ -11,6 +11,9 @@ class Miner:
         self._filter_stats = {"candidates": {}, "filtered": {}}
         self._original_collisions = {}
 
+    def reset_db(self) -> None:
+        self.db.reset()
+
     def fetch(self, start: int, end: int) -> None:
         fetch_block_range(self.rpc, self.db, BlockRange(start, end))
 
