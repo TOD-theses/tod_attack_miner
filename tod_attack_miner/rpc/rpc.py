@@ -7,10 +7,16 @@ from web3.datastructures import AttributeDict
 
 from tod_attack_miner.rpc.types import BlockWithTransactions, TxPrestate, TxStateDiff
 
+RPC_TIMEOUT = 120
+
 
 class RPC:
     def __init__(self, archive_node_provider_url: str) -> None:
-        self.w3 = Web3(Web3.HTTPProvider(archive_node_provider_url))
+        self.w3 = Web3(
+            Web3.HTTPProvider(
+                archive_node_provider_url, request_kwargs={"timeout": RPC_TIMEOUT}
+            )
+        )
 
         self.w3.eth.attach_methods(
             {
@@ -18,8 +24,6 @@ class RPC:
                     RPCEndpoint("debug_traceBlockByNumber")
                 ),
                 "eth_getBlockByNumber": Method(RPCEndpoint("eth_getBlockByNumber")),
-                # NOTE: the stateDiff RPC method is expensive to call
-                # rpc.trace_replay_block_transactions(block_number, ["stateDiff"])
             }
         )
 
