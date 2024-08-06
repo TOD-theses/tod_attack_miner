@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import pytest
 from tod_attack_miner.db.db import DB
@@ -15,7 +14,6 @@ from psycopg import Connection
 from tod_attack_miner.rpc.rpc import RPC
 
 test_provider_url = "http://localhost:8124/eth"
-test_db_path = Path("test_database.db")
 
 
 @pytest.mark.vcr

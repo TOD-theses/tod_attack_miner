@@ -40,6 +40,9 @@ def main():
     parser.add_argument("--postgres-host", type=str, default="localhost")
     parser.add_argument("--postgres-port", type=int, default=5432)
     parser.add_argument(
+        "--quick-stats", action="store_true", help="Only output performant stats"
+    )
+    parser.add_argument(
         "--stats-only",
         action=BooleanOptionalAction,
         help="Skip data fetching and processing and only output stats",
@@ -52,7 +55,7 @@ def main():
         miner = Miner(RPC(args.archive_node_provider), DB(conn))
 
         if args.stats_only:
-            print(json.dumps(miner.get_stats()))
+            print(json.dumps(miner.get_stats(args.quick_stats)))
         else:
             if args.reset_db:
                 miner.reset_db()
@@ -64,4 +67,4 @@ def main():
                 + get_filters_duplicate_limits(10)
             )
             print(f"Found {miner.count_candidates()} candidates")
-            print(json.dumps(miner.get_stats()))
+            print(json.dumps(miner.get_stats(args.quick_stats)))

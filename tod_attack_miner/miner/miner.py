@@ -39,10 +39,15 @@ class Miner:
     def get_candidates(self) -> Sequence[Candidate]:
         return self.db.get_candidates()
 
-    def get_stats(self):
-        self._filter_stats["candidates"]["original_without_same_value"] = (
-            self.db.count_candidates_original()
-        )
+    def get_stats(self, quick=False):
+        if quick:
+            self._filter_stats["candidates"]["original_without_same_value"] = (
+                "<omitted because of quick stats>"
+            )
+        else:
+            self._filter_stats["candidates"]["original_without_same_value"] = (
+                self.db.count_candidates_original()
+            )
         return {
             "accesses": self.db.get_accesses_stats(),
             "state_diffs": self.db.get_state_diffs_stats(),
