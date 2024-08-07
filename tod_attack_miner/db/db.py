@@ -13,6 +13,7 @@ _TABLES = {
     "state_diffs": "(block_number INTEGER, tx_index INTEGER, tx_hash TEXT, type TEXT, key TEXT, pre_value TEXT, post_value TEXT)",
     "collisions": "(tx_write_hash TEXT, tx_access_hash TEXT, type TEXT, key TEXT, block_dist INTEGER, PRIMARY KEY(tx_write_hash, tx_access_hash, type, key))",
     "candidates": "(tx_write_hash TEXT, tx_access_hash TEXT, PRIMARY KEY(tx_write_hash, tx_access_hash))",
+    "evaluation_candidates": "(tx_write_hash TEXT, tx_access_hash TEXT, filtered_by TEXT, PRIMARY KEY(tx_write_hash, tx_access_hash))",
     "codes": "(addr TEXT, code TEXT, hash TEXT, PRIMARY KEY(addr))",
     "skeletons": "(addr TEXT, family TEXT, hash TEXT, PRIMARY KEY(addr))",
 }
@@ -35,6 +36,12 @@ class Candidate(TypedDict):
     tx_b: str
     block_dist: int
     types: Sequence[ACCESS_TYPE]
+
+
+class EvaluationCandidate(TypedDict):
+    tx_a: str
+    tx_b: str
+    filter: str | None
 
 
 class DB:
@@ -228,6 +235,14 @@ class DB:
             )
         self._con.commit()
 
+    def insert_evaluation_candidates(self, candidates: Iterable[tuple[str, str]]):
+        values = [(tx_a, tx_b, "") for tx_a, tx_b in candidates]
+        with self._con.cursor() as cursor:
+            cursor.executemany(
+                "INSERT INTO evaluation_candidates VALUES (%s, %s, %s)", values
+            )
+        self._con.commit()
+
     def insert_skeletons(self):
         codes = self.get_codes()
         mapped_codes = [(addr, code_skeleton_hash(c), hash) for addr, c, hash in codes]
@@ -341,6 +356,54 @@ WHERE NOT EXISTS (
     """
             return cursor.execute(sql).fetchall()[0][0]
 
+    def evaluate_candidates_for_collisions(self):
+        with self._con.cursor() as cursor:
+            sql = """
+            UPDATE evaluation_candidates
+            SET filtered_by = 'no collision'
+            FROM (
+                SELECT c.tx_write_hash, c.tx_access_hash
+                FROM evaluation_candidates c
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM accesses
+                    INNER JOIN state_diffs
+                    ON accesses.type = state_diffs.type
+                    AND accesses.key = state_diffs.key
+                    AND accesses.tx_hash = tx_access_hash
+                    AND state_diffs.tx_hash = tx_write_hash
+                ) AND NOT EXISTS (
+                    SELECT 1
+                    FROM state_diffs s1
+                    INNER JOIN state_diffs s2
+                    ON s1.type = s2.type
+                    AND s1.key = s2.key
+                    AND s1.tx_hash = tx_access_hash
+                    AND s2.tx_hash = tx_write_hash
+                )
+            ) x
+            WHERE evaluation_candidates.tx_write_hash = x.tx_write_hash
+            AND evaluation_candidates.tx_access_hash = x.tx_access_hash
+            """
+            cursor.execute(sql)
+        self._con.commit()
+
+    def update_filtered_evaluation_candidates(self, filter_name: str):
+        with self._con.cursor() as cursor:
+            sql = f"""
+            UPDATE evaluation_candidates
+            SET filtered_by = '{filter_name}'
+            WHERE filtered_by = ''
+              AND NOT EXISTS (
+                SELECT 1
+                FROM candidates
+                WHERE candidates.tx_write_hash = evaluation_candidates.tx_write_hash
+                  AND candidates.tx_access_hash = evaluation_candidates.tx_access_hash
+            )
+            """
+            cursor.execute(sql)  # type: ignore
+        self._con.commit()
+
     def count_transactions(self) -> int:
         with self._con.cursor() as cursor:
             return cursor.execute("SELECT COUNT(*) FROM transactions").fetchall()[0][0]
@@ -424,6 +487,19 @@ GROUP BY candidates.tx_write_hash, candidates.tx_access_hash, block_dist
                     "types": cast(Sequence[ACCESS_TYPE], types.split("|")),
                 }
                 for tx_a, tx_b, block_dist, types in candidates
+            ]
+
+    def get_evaluation_candidates(self) -> Sequence[EvaluationCandidate]:
+        with self._con.cursor() as cursor:
+            sql = "SELECT tx_write_hash, tx_access_hash, filtered_by FROM evaluation_candidates ORDER BY tx_write_hash, tx_access_hash"
+            candidates: Iterable[tuple[str, str, str]] = cursor.execute(sql)
+            return [
+                {
+                    "tx_a": tx_a,
+                    "tx_b": tx_b,
+                    "filter": filter or None,
+                }
+                for tx_a, tx_b, filter in candidates
             ]
 
     def get_accesses_stats(self):

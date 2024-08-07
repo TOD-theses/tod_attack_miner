@@ -1,8 +1,10 @@
 """CLI interface for tod_attack_miner project."""
 
 from argparse import ArgumentParser, BooleanOptionalAction
+import csv
 from importlib.metadata import version
 import json
+from pathlib import Path
 
 import psycopg
 
@@ -35,6 +37,17 @@ def main():
         action="store_true",
         help="Delete data from previous runs before starting to mine",
     )
+    parser.add_argument(
+        "--evaluate-candidates-csv",
+        type=Path,
+        help="If passed, evaluate up to which filter candidates exist",
+    )
+    parser.add_argument(
+        "--evaluation-result-csv",
+        type=Path,
+        default=Path("evaluations.csv"),
+        help="Path, where evaluation results should be stored",
+    )
     parser.add_argument("--postgres-user", type=str, default="postgres")
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
@@ -48,6 +61,8 @@ def main():
         help="Skip data fetching and processing and only output stats",
     )
     args = parser.parse_args()
+    evaluate_candidates_csv: Path | None = args.evaluate_candidates_csv
+    evaluation_results_csv: Path = args.evaluation_result_csv
 
     with psycopg.connect(
         f"user={args.postgres_user} password={args.postgres_password} host={args.postgres_host} port={args.postgres_port}"
@@ -56,6 +71,38 @@ def main():
 
         if args.stats_only:
             print(json.dumps(miner.get_stats(args.quick_stats)))
+        elif evaluate_candidates_csv:
+            if args.reset_db:
+                miner.reset_db()
+            with open(evaluate_candidates_csv, newline="") as csv_file, open(
+                evaluation_results_csv, "w"
+            ) as results_csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                candidates = [(c["tx_a"], c["tx_b"]) for c in csv_reader]
+                if args.reset_db:
+                    miner.reset_db()
+                miner.fetch(int(args.from_block), int(args.to_block))
+                miner.find_collisions()
+                results = miner.evaluate_candidates(
+                    get_filters_except_duplicate_limits(25)
+                    + get_filters_duplicate_limits(10),
+                    candidates,
+                )
+
+                csv_writer = csv.DictWriter(
+                    results_csv_file, ["tx_a", "tx_b", "filtered_by"]
+                )
+                csv_writer.writeheader()
+                rows = [
+                    {
+                        "tx_a": c["tx_a"],
+                        "tx_b": c["tx_b"],
+                        "filtered_by": c["filter"] or "",
+                    }
+                    for c in results
+                ]
+                csv_writer.writerows(rows)
+                print(f"Saved results to {evaluation_results_csv}")
         else:
             if args.reset_db:
                 miner.reset_db()

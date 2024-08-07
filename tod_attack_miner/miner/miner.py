@@ -1,7 +1,9 @@
-from typing import Callable, Sequence
-from tod_attack_miner.db.db import DB, Candidate
+from typing import Callable, Iterable, Sequence
+from tod_attack_miner.db.db import DB, Candidate, EvaluationCandidate
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
+
+Filters = Sequence[tuple[str, Callable[[DB], int]]]
 
 
 class Miner:
@@ -25,13 +27,26 @@ class Miner:
         self.db.insert_candidates()
         self._original_collisions = self.db.get_collisions_stats()
 
-    def filter_candidates(
-        self, filters: Sequence[tuple[str, Callable[[DB], int]]]
-    ) -> None:
+    def filter_candidates(self, filters: Filters) -> None:
         self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
         for name, filter in filters:
             self._filter_stats["filtered"][name] = filter(self.db)
         self._filter_stats["candidates"]["final"] = self.db.count_candidates()
+
+    def evaluate_candidates(
+        self, filters: Filters, candidates: Iterable[tuple[str, str]]
+    ) -> Iterable[EvaluationCandidate]:
+        self.db.insert_evaluation_candidates(candidates)
+        self.db.evaluate_candidates_for_collisions()
+        self.db.update_filtered_evaluation_candidates("same-value collision")
+
+        self._filter_stats["candidates"]["before_filters"] = self.db.count_candidates()
+        for name, filter in filters:
+            self._filter_stats["filtered"][name] = filter(self.db)
+            self.db.update_filtered_evaluation_candidates(name)
+
+        self._filter_stats["candidates"]["final"] = self.db.count_candidates()
+        return self.db.get_evaluation_candidates()
 
     def count_candidates(self) -> int:
         return self.db.count_candidates()
