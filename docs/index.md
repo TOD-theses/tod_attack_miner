@@ -1,3 +1,0 @@
-# TOD attack miner
-
-TODO...

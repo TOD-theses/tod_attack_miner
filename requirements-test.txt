@@ -1,8 +1,6 @@
 # This requirements are for development and testing only, not for production.
 coverage
 gitchangelog
-mkdocs
-plantuml_markdown
 pyright
 pytest
 pytest-cov
