@@ -3,6 +3,7 @@ from tod_attack_miner.db.db import DB
 from tod_attack_miner.db.filters import (
     get_filters_duplicate_limits,
     get_filters_except_duplicate_limits,
+    get_filters_up_to_indirect_dependencies,
 )
 from tod_attack_miner.fetcher.fetcher import BlockRange
 from tod_attack_miner.miner.miner import Miner
@@ -95,3 +96,20 @@ def test_tod_attack_miner_evaluation(
     )
 
     snapshot.assert_match(results, "evaluation results")
+
+
+@pytest.mark.vcr
+def test_tod_attack_miner_evaluation_indirect_dependencies(
+    postgresql: Connection, snapshot: PyTestSnapshotTest
+):
+    block_range = BlockRange(19895500, 19895504)
+
+    miner = Miner(RPC(test_provider_url), DB(postgresql))
+
+    miner.fetch(block_range.start, block_range.end)
+    miner.find_collisions()
+    results = miner.get_indirect_dependencies(
+        get_filters_up_to_indirect_dependencies(3), evaluation_candidates
+    )
+
+    snapshot.assert_match(results, "indirect dependencies")

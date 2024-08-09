@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Iterable
 import psycopg
 import psycopg.sql
 from tod_attack_miner.db.db import DB
@@ -108,7 +108,6 @@ indirect_dependencies_candidates AS (
   INNER JOIN candidates ON tx_access_hash = tx_x
   WHERE tx_a = tx_write_hash
     AND tx_b != tx_x
-    
   LIMIT {}
 )
 DELETE FROM candidates
@@ -124,6 +123,20 @@ WHERE tx_write_hash = tx_a AND tx_access_hash = tx_b""").format(10000)
         db._con.commit()
     db.remove_collisions_without_candidate()
     return deleted
+
+
+def get_evaluation_indirect_dependencies_quick(
+    db: DB,
+) -> Iterable[tuple[str, str, str]]:
+    sql = """
+SELECT d.tx_write_hash, d.tx_access_hash, d.tx_write_hash || '|' || a.tx_access_hash || '|' || d.tx_access_hash
+FROM evaluation_candidates d
+INNER JOIN candidates a ON d.tx_write_hash = a.tx_write_hash
+INNER JOIN candidates b ON d.tx_access_hash = b.tx_access_hash
+WHERE a.tx_access_hash = b.tx_write_hash
+"""
+    with db._con.cursor() as cursor:
+        return cursor.execute(sql).fetchall()
 
 
 def create_limit_collisions_per_address(limit: int):
@@ -206,6 +219,17 @@ def get_filters_except_duplicate_limits(
         ("indirect_dependencies_recursive", filter_indirect_dependencies_recursive),
         ("same_sender", filter_same_sender),
         ("recipient_eth_transfer", filter_second_tx_ether_transfer),
+    ]
+
+
+def get_filters_up_to_indirect_dependencies(
+    window_size: int | None,
+) -> list[tuple[str, Callable[[DB], int]]]:
+    return [
+        ("block_window", create_block_window_filter(window_size)),
+        ("block_producers", filter_block_producers),
+        ("nonces", filter_nonces),
+        ("codes", filter_codes),
     ]
 
 

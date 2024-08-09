@@ -89,7 +89,7 @@ snapshots["test_tod_attack_miner_evaluation evaluation results"] = [
         "tx_b": "0x6016a7e14ef9b7ecc80985ace338e8894de892a58e941dd45dbb90c729079cb4",
     },
     {
-        "filter": "collision",
+        "filter": "no collision",
         "tx_a": "0x40ca117ccc4933dd5b30e399f64673068c622802bdbd728f84b212cd197bf51a",
         "tx_b": "0x31c5b4782a75a1f5f513cd86ede1a8c0af54baa9511982f43a57988036ed0fed",
     },
@@ -128,4 +128,19 @@ snapshots["test_tod_attack_miner_evaluation evaluation results"] = [
         "tx_a": "0xf812335569705e032f8eca9fff94d3348e29d748bd9ed4e2acd76fe54dbec42d",
         "tx_b": "0xd2b8e8cff425ae336c6084a9d7fc1c7d33d599fdf00c93eda40339e37ca6b12d",
     },
+]
+
+snapshots[
+    "test_tod_attack_miner_evaluation_indirect_dependencies indirect dependencies"
+] = [
+    (
+        "0x775232180c49821d4208b3c5470d6367de5b96810c79ae0993aeb98ada762ee8",
+        "0x65df49728edca9888255b262f082c1a13beaf1dca58bcb8004920b1fbb53e86b",
+        "0x775232180c49821d4208b3c5470d6367de5b96810c79ae0993aeb98ada762ee8|0x1ea1709059406a15686edef98de051fdfb5e854cc0991687b9573cba9005b021|0x65df49728edca9888255b262f082c1a13beaf1dca58bcb8004920b1fbb53e86b",
+    ),
+    (
+        "0xf812335569705e032f8eca9fff94d3348e29d748bd9ed4e2acd76fe54dbec42d",
+        "0xd2b8e8cff425ae336c6084a9d7fc1c7d33d599fdf00c93eda40339e37ca6b12d",
+        "0xf812335569705e032f8eca9fff94d3348e29d748bd9ed4e2acd76fe54dbec42d|0x69b21c9878b2f517e3d5d882ab0cf29e150435f5c5b529d52e1480ae7af64509|0xd2b8e8cff425ae336c6084a9d7fc1c7d33d599fdf00c93eda40339e37ca6b12d",
+    ),
 ]
