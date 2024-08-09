@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Iterable
 import psycopg
 import psycopg.sql
 from tod_attack_miner.db.db import DB
@@ -126,6 +126,33 @@ WHERE tx_write_hash = tx_a AND tx_access_hash = tx_b""").format(10000)
     return deleted
 
 
+def get_evaluation_indirect_dependencies_recursive(
+    db: DB, max_depth: int
+) -> Iterable[tuple[str, str, str]]:
+    sql = psycopg.sql.SQL("""
+WITH RECURSIVE depends_on(tx_a, tx_b, min_block_number, min_tx_index, tx_x, path, depth) AS (
+    SELECT tx_write_hash, tx_access_hash, block_number, tx_index, tx_access_hash, tx_access_hash, 1
+    FROM evaluation_candidates
+    INNER JOIN transactions ON hash = tx_write_hash
+  UNION
+    SELECT tx_a, tx_b, min_block_number, min_tx_index, tx_write_hash, tx_write_hash || '|' || path, depth + 1
+    FROM depends_on, candidates
+    INNER JOIN transactions ON hash = tx_write_hash
+    WHERE depends_on.tx_x = tx_access_hash
+      AND depth <= {}
+      AND (block_number > min_block_number
+           OR block_number = min_block_number AND tx_index > min_tx_index) 
+)
+SELECT tx_a, tx_b, tx_a || '|' || path
+FROM depends_on
+INNER JOIN evaluation_candidates
+ON tx_a = tx_write_hash AND tx_b = tx_access_hash
+WHERE tx_b != tx_x
+""").format(max_depth)
+    with db._con.cursor() as cursor:
+        return cursor.execute(sql).fetchall()
+
+
 def create_limit_collisions_per_address(limit: int):
     def limit_collisions_per_address(db: DB):
         sql = f"""
@@ -206,6 +233,17 @@ def get_filters_except_duplicate_limits(
         ("indirect_dependencies_recursive", filter_indirect_dependencies_recursive),
         ("same_sender", filter_same_sender),
         ("recipient_eth_transfer", filter_second_tx_ether_transfer),
+    ]
+
+
+def get_filters_up_to_indirect_dependencies(
+    window_size: int | None,
+) -> list[tuple[str, Callable[[DB], int]]]:
+    return [
+        ("block_window", create_block_window_filter(window_size)),
+        ("block_producers", filter_block_producers),
+        ("nonces", filter_nonces),
+        ("codes", filter_codes),
     ]
 
 

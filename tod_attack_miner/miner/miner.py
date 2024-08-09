@@ -1,5 +1,6 @@
 from typing import Callable, Iterable, Sequence
 from tod_attack_miner.db.db import DB, Candidate, EvaluationCandidate
+from tod_attack_miner.db.filters import get_evaluation_indirect_dependencies_recursive
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
 
@@ -47,6 +48,12 @@ class Miner:
 
         self._filter_stats["candidates"]["final"] = self.db.count_candidates()
         return self.db.get_evaluation_candidates()
+
+    def get_indirect_dependencies(
+        self, filters: Filters, candidates: Iterable[tuple[str, str]], max_depth: int
+    ) -> Iterable[tuple[str, str, str]]:
+        self.evaluate_candidates(filters, candidates)
+        return get_evaluation_indirect_dependencies_recursive(self.db, max_depth)
 
     def count_candidates(self) -> int:
         return self.db.count_candidates()

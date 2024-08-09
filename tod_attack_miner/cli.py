@@ -12,6 +12,7 @@ from tod_attack_miner.db.db import DB
 from tod_attack_miner.db.filters import (
     get_filters_duplicate_limits,
     get_filters_except_duplicate_limits,
+    get_filters_up_to_indirect_dependencies,
 )
 from tod_attack_miner.miner.miner import Miner
 
@@ -25,7 +26,7 @@ def main():
     )
     parser.add_argument("--archive-node-provider", default="http://localhost:8124/eth")
     parser.add_argument("--from-block", default=19895500)
-    parser.add_argument("--to-block", default=19895500 + 100 - 1)
+    parser.add_argument("--to-block", default=19895504)
     parser.add_argument(
         "--window-size",
         type=int,
@@ -48,6 +49,11 @@ def main():
         default=Path("evaluations.csv"),
         help="Path, where evaluation results should be stored",
     )
+    parser.add_argument(
+        "--extract-indirect-dependencies",
+        action="store_true",
+        help="When evaluating candidates, stop before the indirect dependencies filter and output indirect dependency paths",
+    )
     parser.add_argument("--postgres-user", type=str, default="postgres")
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
@@ -63,6 +69,7 @@ def main():
     args = parser.parse_args()
     evaluate_candidates_csv: Path | None = args.evaluate_candidates_csv
     evaluation_results_csv: Path = args.evaluation_result_csv
+    extract_indirect_dependencies: bool = args.extract_indirect_dependencies
 
     with psycopg.connect(
         f"user={args.postgres_user} password={args.postgres_password} host={args.postgres_host} port={args.postgres_port}"
@@ -79,30 +86,35 @@ def main():
             ) as results_csv_file:
                 csv_reader = csv.DictReader(csv_file)
                 candidates = [(c["tx_a"], c["tx_b"]) for c in csv_reader]
-                if args.reset_db:
-                    miner.reset_db()
                 miner.fetch(int(args.from_block), int(args.to_block))
                 miner.find_collisions()
-                results = miner.evaluate_candidates(
-                    get_filters_except_duplicate_limits(25)
-                    + get_filters_duplicate_limits(10),
-                    candidates,
-                )
+                if extract_indirect_dependencies:
+                    filters = get_filters_up_to_indirect_dependencies(25)
+                    results = miner.get_indirect_dependencies(filters, candidates, 1)
+                    csv_writer = csv.writer(results_csv_file)
+                    csv_writer.writerow(("tx_a", "tx_b", "dependency_path"))
+                    csv_writer.writerows(results)
+                else:
+                    filters = get_filters_except_duplicate_limits(
+                        25
+                    ) + get_filters_duplicate_limits(10)
+                    results = miner.evaluate_candidates(filters, candidates)
 
-                csv_writer = csv.DictWriter(
-                    results_csv_file, ["tx_a", "tx_b", "filtered_by"]
-                )
-                csv_writer.writeheader()
-                rows = [
-                    {
-                        "tx_a": c["tx_a"],
-                        "tx_b": c["tx_b"],
-                        "filtered_by": c["filter"] or "",
-                    }
-                    for c in results
-                ]
-                csv_writer.writerows(rows)
+                    csv_writer = csv.DictWriter(
+                        results_csv_file, ["tx_a", "tx_b", "filtered_by"]
+                    )
+                    csv_writer.writeheader()
+                    rows = [
+                        {
+                            "tx_a": c["tx_a"],
+                            "tx_b": c["tx_b"],
+                            "filtered_by": c["filter"] or "",
+                        }
+                        for c in results
+                    ]
+                    csv_writer.writerows(rows)
                 print(f"Saved results to {evaluation_results_csv}")
+
         else:
             if args.reset_db:
                 miner.reset_db()
