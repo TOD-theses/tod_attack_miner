@@ -92,7 +92,8 @@ def test_tod_attack_miner_evaluation(
     miner.fetch(block_range.start, block_range.end)
     miner.find_collisions()
     results = miner.evaluate_candidates(
-        get_filters_except_duplicate_limits(3), evaluation_candidates
+        get_filters_except_duplicate_limits(3) + get_filters_duplicate_limits(10),
+        evaluation_candidates,
     )
 
     snapshot.assert_match(results, "evaluation results")
@@ -113,3 +114,22 @@ def test_tod_attack_miner_evaluation_indirect_dependencies(
     )
 
     snapshot.assert_match(results, "indirect dependencies")
+
+
+@pytest.mark.vcr
+def test_tod_attack_miner_evaluation_duplicates_limit(
+    postgresql: Connection, snapshot: PyTestSnapshotTest
+):
+    block_range = BlockRange(19895500, 19895504)
+
+    miner = Miner(RPC(test_provider_url), DB(postgresql))
+
+    miner.fetch(block_range.start, block_range.end)
+    miner.find_collisions()
+    results = miner.get_limit_representatives(
+        get_filters_except_duplicate_limits(3),
+        get_filters_duplicate_limits(10),
+        evaluation_candidates,
+    )
+
+    snapshot.assert_match(results, "representatives")

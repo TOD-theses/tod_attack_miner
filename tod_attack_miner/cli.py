@@ -28,12 +28,6 @@ def main():
     parser.add_argument("--from-block", default=19895500)
     parser.add_argument("--to-block", default=19895504)
     parser.add_argument(
-        "--window-size",
-        type=int,
-        default=None,
-        help="If passed, filter TOD candidates that are {window-size} or more blocks apart",
-    )
-    parser.add_argument(
         "--reset-db",
         action="store_true",
         help="Delete data from previous runs before starting to mine",
@@ -54,6 +48,11 @@ def main():
         action="store_true",
         help="When evaluating candidates, stop before the indirect dependencies filter and output indirect dependency paths",
     )
+    parser.add_argument(
+        "--extract-limit-representatives",
+        action="store_true",
+        help="When evaluating candidates, stop before the duplicate limit and find non-filtered evaluation candidates that represent the candidates filtered because of duplication",
+    )
     parser.add_argument("--postgres-user", type=str, default="postgres")
     parser.add_argument("--postgres-password", type=str, default="password")
     parser.add_argument("--postgres-host", type=str, default="localhost")
@@ -70,6 +69,7 @@ def main():
     evaluate_candidates_csv: Path | None = args.evaluate_candidates_csv
     evaluation_results_csv: Path = args.evaluation_result_csv
     extract_indirect_dependencies: bool = args.extract_indirect_dependencies
+    extract_limit_repesentatives: bool = args.extract_limit_representatives
 
     with psycopg.connect(
         f"user={args.postgres_user} password={args.postgres_password} host={args.postgres_host} port={args.postgres_port}"
@@ -94,6 +94,19 @@ def main():
                     csv_writer = csv.writer(results_csv_file)
                     csv_writer.writerow(("tx_a", "tx_b", "dependency_path"))
                     csv_writer.writerows(results)
+                elif extract_limit_repesentatives:
+                    filters = get_filters_except_duplicate_limits(25)
+                    duplicate_filters = get_filters_duplicate_limits(10)
+                    results = miner.get_limit_representatives(
+                        filters, duplicate_filters, candidates
+                    )
+                    rows = [
+                        (tx_a, tx_b, str(x), "|".join([f"{a}-{b}" for a, b in y]))
+                        for (tx_a, tx_b), x, y in results
+                    ]
+                    csv_writer = csv.writer(results_csv_file)
+                    csv_writer.writerow(("tx_a", "tx_b", "covered", "representatives"))
+                    csv_writer.writerows(rows)
                 else:
                     filters = get_filters_except_duplicate_limits(
                         25

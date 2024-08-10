@@ -104,7 +104,7 @@ snapshots["test_tod_attack_miner_evaluation evaluation results"] = [
         "tx_b": "0x112ac55e0122204165ab94bad060ffcee026e4db572f74b3325d56bd0950ade1",
     },
     {
-        "filter": None,
+        "filter": "limited_collisions_per_address",
         "tx_a": "0x775232180c49821d4208b3c5470d6367de5b96810c79ae0993aeb98ada762ee8",
         "tx_b": "0x1ea1709059406a15686edef98de051fdfb5e854cc0991687b9573cba9005b021",
     },
@@ -128,6 +128,17 @@ snapshots["test_tod_attack_miner_evaluation evaluation results"] = [
         "tx_a": "0xf812335569705e032f8eca9fff94d3348e29d748bd9ed4e2acd76fe54dbec42d",
         "tx_b": "0xd2b8e8cff425ae336c6084a9d7fc1c7d33d599fdf00c93eda40339e37ca6b12d",
     },
+]
+
+snapshots["test_tod_attack_miner_evaluation_duplicates_limit representatives"] = [
+    (
+        (
+            "0x775232180c49821d4208b3c5470d6367de5b96810c79ae0993aeb98ada762ee8",
+            "0x1ea1709059406a15686edef98de051fdfb5e854cc0991687b9573cba9005b021",
+        ),
+        False,
+        set([]),
+    )
 ]
 
 snapshots[

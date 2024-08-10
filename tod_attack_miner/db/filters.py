@@ -1,4 +1,5 @@
-from typing import Callable, Iterable
+from collections import defaultdict
+from typing import Callable, Iterable, Mapping
 import psycopg
 import psycopg.sql
 from tod_attack_miner.db.db import DB
@@ -137,6 +138,28 @@ WHERE a.tx_access_hash = b.tx_write_hash
 """
     with db._con.cursor() as cursor:
         return cursor.execute(sql).fetchall()
+
+
+def get_remaining_evaluation_candidate_collisions(
+    db: DB,
+) -> Mapping[tuple[str, str], set[tuple[str, str]]]:
+    """Return a mapping from evaluation candidates to collisions (type, key)"""
+
+    sql = """
+        SELECT c.tx_write_hash, c.tx_access_hash, type, key
+        FROM collisions c
+        INNER JOIN evaluation_candidates ec
+        ON c.tx_write_hash = ec.tx_write_hash AND c.tx_access_hash = ec.tx_access_hash
+        WHERE filtered_by = ''
+    """
+    with db._con.cursor() as cursor:
+        collisions: list[tuple[str, str, str, str]] = cursor.execute(sql).fetchall()
+        mapping: dict[tuple[str, str], set[tuple[str, str]]] = defaultdict(set)
+        for tx_a, tx_b, type, key in collisions:
+            mapping[(tx_a, tx_b)].add((type, key))
+
+        # copy so we don't have a defaultdict outside, which is error-prone
+        return {**mapping}
 
 
 def create_limit_collisions_per_address(limit: int):

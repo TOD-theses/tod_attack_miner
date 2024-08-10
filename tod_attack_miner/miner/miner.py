@@ -1,6 +1,9 @@
 from typing import Callable, Iterable, Sequence
 from tod_attack_miner.db.db import DB, Candidate, EvaluationCandidate
-from tod_attack_miner.db.filters import get_evaluation_indirect_dependencies_quick
+from tod_attack_miner.db.filters import (
+    get_evaluation_indirect_dependencies_quick,
+    get_remaining_evaluation_candidate_collisions,
+)
 from tod_attack_miner.fetcher.fetcher import BlockRange, fetch_block_range
 from tod_attack_miner.rpc.rpc import RPC
 
@@ -55,6 +58,46 @@ class Miner:
         self.evaluate_candidates(filters, candidates)
         indirect_dependencies = get_evaluation_indirect_dependencies_quick(self.db)
         return sorted(indirect_dependencies)
+
+    def get_limit_representatives(
+        self,
+        filters: Filters,
+        duplicate_filters: Filters,
+        candidates: Iterable[tuple[str, str]],
+    ) -> Iterable[tuple[tuple[str, str], bool, Iterable[tuple[str, str]]]]:
+        self.evaluate_candidates(filters, candidates)
+        collisions = get_remaining_evaluation_candidate_collisions(self.db)
+        for name, filter_duplicates in duplicate_filters:
+            filter_duplicates(self.db)
+            self.db.update_filtered_evaluation_candidates(name)
+        remaining_candidates = self.db.get_evaluation_candidates()
+        remaining_candidates_tuples: set[tuple[str, str]] = set()
+        covered_collisions: dict[tuple[str, str], tuple[str, str]] = {}
+        for candidate in remaining_candidates:
+            tx_a, tx_b = candidate["tx_a"], candidate["tx_b"]
+            # only include non-filtered candidates for the covered collisions
+            if candidate["filter"] is not None:
+                continue
+            remaining_candidates_tuples.add((tx_a, tx_b))
+            if (tx_a, tx_b) not in collisions:
+                continue
+            for coll in collisions[(tx_a, tx_b)]:
+                covered_collisions[coll] = (tx_a, tx_b)
+
+        result = []
+        for candidate, colls in collisions.items():
+            if candidate in remaining_candidates_tuples:
+                continue
+            completeley_represented = True
+            representatives: set[tuple[str, str]] = set()
+            for coll in colls:
+                if coll in covered_collisions:
+                    representatives.add(covered_collisions[coll])
+                else:
+                    completeley_represented = False
+            result.append((candidate, completeley_represented, representatives))
+
+        return sorted(result)
 
     def count_candidates(self) -> int:
         return self.db.count_candidates()
